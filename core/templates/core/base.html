@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SIFDS Insurance{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  {% block body %}
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand"><span class="dot"></span> SIFDS Insurance</div>
+      <nav class="sidebar-nav">
+        {% block sidebar %}{% endblock %}
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="avatar">{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}</div>
+          <div class="meta">
+            <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
+            <div class="role">{{ request.user.profile.role }}</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <div class="row">
+          <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fa-solid fa-bars"></i></button>
+          <h1>{% block page_title %}{% endblock %}</h1>
+        </div>
+        <div class="right">
+          <a href="{% block notif_url %}#{% endblock %}" class="notif" title="Notifications">
+            <i class="fa-regular fa-bell"></i>
+            {% block notif_badge %}{% endblock %}
+          </a>
+          <a href="{% url 'logout' %}" class="btn btn-sm" title="Log out"><i class="fa-solid fa-arrow-right-from-bracket"></i></a>
+        </div>
+      </header>
+      <main class="content">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% if request.user.profile.role == 'policyholder' %}
+  <div id="copilot-toggle" style="position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2); z-index:9999; font-size:22px;">
+    <i class="fa-solid fa-robot"></i>
+  </div>
+  <div id="copilot-panel" style="display:none; position:fixed; bottom:90px; right:24px; width:360px; max-width:calc(100vw - 48px); background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.15); z-index:9999; flex-direction:column; overflow:hidden;">
+    <div style="background:var(--primary); color:#fff; padding:14px 18px; font-weight:600; display:flex; align-items:center; gap:10px;">
+      <i class="fa-solid fa-robot"></i> SIFDS Copilot
+      <span id="copilot-close" style="margin-left:auto; cursor:pointer; font-size:18px;">&times;</span>
+    </div>
+    <div id="copilot-messages" style="flex:1; overflow-y:auto; padding:16px; max-height:320px; display:flex; flex-direction:column; gap:10px;"></div>
+    <div style="display:flex; gap:8px; padding:12px; border-top:1px solid var(--border);">
+      <input type="text" id="copilot-input" placeholder="Ask me anything..." style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+      <button id="copilot-send" class="btn btn-primary btn-sm" style="padding:10px 14px;"><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </div>
+  <script>
+  (function() {
+    const toggle = document.getElementById('copilot-toggle');
+    const panel = document.getElementById('copilot-panel');
+    const closeBtn = document.getElementById('copilot-close');
+    const messagesEl = document.getElementById('copilot-messages');
+    const input = document.getElementById('copilot-input');
+    const sendBtn = document.getElementById('copilot-send');
+
+    toggle.addEventListener('click', () => {
+      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+      if (messagesEl.children.length === 0) {
+        addMessage('bot', "Hi! I am your SIFDS insurance assistant. Ask me about your policies, claims, payments, or coverage limits.");
+      }
+    });
+    closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+
+    function addMessage(sender, text) {
+      const div = document.createElement('div');
+      div.style.cssText = sender === 'user'
+        ? 'align-self:flex-end; background:var(--primary); color:#fff; padding:10px 14px; border-radius:12px 12px 2px 12px; max-width:80%; font-size:14px; white-space:pre-wrap;'
+        : 'align-self:flex-start; background:var(--bg); padding:10px 14px; border-radius:12px 12px 12px 2px; max-width:80%; font-size:14px; white-space:pre-wrap;';
+      div.textContent = text;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text) return;
+      addMessage('user', text);
+      input.value = '';
+      sendBtn.disabled = true;
+      try {
+        const res = await fetch('{% url "copilot_chat" %}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+          body: JSON.stringify({message: text})
+        });
+        const data = await res.json();
+        addMessage('bot', data.reply);
+      } catch(e) {
+        addMessage('bot', 'Sorry, something went wrong. Please try again.');
+      }
+      sendBtn.disabled = false;
+    }
+
+    sendBtn.addEventListener('click', send);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+  })();
+  </script>
+  {% endif %}
+  {% endblock %}
+</body>
+</html>

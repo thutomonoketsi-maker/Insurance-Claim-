@@ -1,0 +1,38 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Documents - SIFDS Insurance{% endblock %}
+{% block page_title %}Document Verification{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}" class="active"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Document</th><th>User</th><th>Type</th><th>Uploaded</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td>{{ doc.document_name }}</td>
+          <td>{{ doc.user.get_full_name|default:doc.user.username }}</td>
+          <td>{{ doc.get_document_type_display }}</td>
+          <td class="text-muted text-sm">{{ doc.uploaded_at|date:"Y-m-d" }}</td>
+          <td><a href="{% url 'staff_verify_document' doc.id %}" class="btn btn-sm">Review</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty"><p>No documents pending verification.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

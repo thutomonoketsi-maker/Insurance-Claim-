@@ -1,0 +1,54 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Staff - SIFDS Insurance{% endblock %}
+{% block page_title %}Staff &amp; Investigators{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'admin_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'admin_users' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Users</a>
+  <a href="{% url 'admin_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'admin_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'admin_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'admin_staff' %}" class="active"><span class="ico"><i class="fa-solid fa-users"></i></span> Staff</a>
+  <a href="{% url 'admin_logs' %}"><span class="ico"><i class="fa-solid fa-list"></i></span> Activity Log</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'admin_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <h3 style="font-size:16px; font-weight:600">Staff members</h3>
+  <a href="{% url 'admin_add_staff' %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Add staff</a>
+</div>
+<div class="card mb-24">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for s in staff %}
+        <tr><td>{{ s.get_full_name|default:s.username }}</td><td>{{ s.email }}</td><td><span class="badge {{ s.profile.status }}">{{ s.profile.get_status_display }}</span></td><td class="text-muted text-sm">{{ s.date_joined|date:"Y-m-d" }}</td></tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>No staff members yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3 style="font-size:16px; font-weight:600" class="mb-16">Investigators</h3>
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Joined</th></tr></thead>
+      <tbody>
+        {% for i in investigators %}
+        <tr><td>{{ i.get_full_name|default:i.username }}</td><td>{{ i.email }}</td><td><span class="badge {{ i.profile.status }}">{{ i.profile.get_status_display }}</span></td><td class="text-muted text-sm">{{ i.date_joined|date:"Y-m-d" }}</td></tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>No investigators yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

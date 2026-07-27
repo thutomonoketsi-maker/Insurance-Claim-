@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Add Staff - SIFDS Insurance{% endblock %}
+{% block page_title %}Add Staff or Investigator{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'admin_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'admin_users' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Users</a>
+  <a href="{% url 'admin_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'admin_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'admin_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'admin_staff' %}" class="active"><span class="ico"><i class="fa-solid fa-users"></i></span> Staff</a>
+  <a href="{% url 'admin_logs' %}"><span class="ico"><i class="fa-solid fa-list"></i></span> Activity Log</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'admin_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <div class="card-head"><h3>New staff account</h3></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field"><label>First name</label><input type="text" name="first_name" required></div>
+        <div class="field"><label>Last name</label><input type="text" name="last_name" required></div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" name="email" required></div>
+      <div class="field">
+        <label>Role</label>
+        <select name="role" required>
+          <option value="staff">Staff</option>
+          <option value="investigator">Investigator</option>
+        </select>
+      </div>
+      <div class="field"><label>Temporary password</label><input type="password" name="password" required><div class="hint">The user will log in with this and can change it later.</div></div>
+      <button type="submit" class="btn btn-primary">Create account</button>
+      <a href="{% url 'admin_staff' %}" class="btn">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

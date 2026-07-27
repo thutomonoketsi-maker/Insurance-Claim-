@@ -1,0 +1,46 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Investigator Dashboard - SIFDS Insurance{% endblock %}
+{% block page_title %}Investigator Dashboard{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'investigator_dashboard' %}" class="active"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'investigator_cases' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Cases</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'investigator_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="label">Assigned to me</div><div class="value">{{ assigned_count }}</div></div>
+  <div class="stat"><div class="label">Open cases</div><div class="value">{{ open_cases }}</div></div>
+  <div class="stat"><div class="label">Flagged claims</div><div class="value">{{ flagged_count }}</div></div>
+</div>
+
+<div class="row between mb-16">
+  <h3 style="font-size:16px; font-weight:600">Recent cases</h3>
+  <a href="{% url 'investigator_cases' %}" class="btn btn-sm">View all</a>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim</th><th>Policyholder</th><th>Amount</th><th>Fraud score</th><th>Status</th><th>Updated</th></tr></thead>
+      <tbody>
+        {% for claim in recent_cases %}
+        <tr>
+          <td><a href="{% url 'investigator_case_detail' claim.id %}">{{ claim.claim_number }}</a></td>
+          <td>{{ claim.user.get_full_name|default:claim.user.username }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td>{% if claim.fraud_flagged %}<span class="badge rejected">{{ claim.fraud_score }}</span>{% else %}{{ claim.fraud_score }}{% endif %}</td>
+          <td><span class="badge {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ claim.updated_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty"><p>No cases assigned yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

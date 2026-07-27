@@ -1,0 +1,56 @@
+{% extends 'core/base.html' %}
+
+{% block title %}My Claims - SIFDS Insurance{% endblock %}
+{% block page_title %}My Claims{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}" class="active"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="label">Total claims</div><div class="value">{{ total_claims }}</div></div>
+  <div class="stat"><div class="label">Pending</div><div class="value">{{ pending }}</div></div>
+  <div class="stat"><div class="label">Approved</div><div class="value">{{ approved }}</div></div>
+  <div class="stat"><div class="label">Rejected</div><div class="value">{{ rejected }}</div></div>
+</div>
+
+<div class="row between mb-16">
+  <h3 style="font-size:16px; font-weight:600">All claims</h3>
+  <a href="{% url 'customer_submit_claim' %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Submit claim</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>Claim number</th><th>Policy</th><th>Incident</th><th>Amount</th><th>Status</th><th>Submitted</th></tr>
+      </thead>
+      <tbody>
+        {% for claim in claims %}
+        <tr>
+          <td><a href="{% url 'customer_claim_detail' claim.id %}">{{ claim.claim_number }}</a></td>
+          <td>{{ claim.policy.policy_number }}</td>
+          <td>{{ claim.incident_type_display }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td><span class="badge {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ claim.submitted_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty"><p>No claims submitted yet.</p><a href="{% url 'customer_submit_claim' %}" class="btn btn-primary btn-sm mt-8">Submit a claim</a></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

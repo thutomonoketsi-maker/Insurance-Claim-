@@ -1,0 +1,91 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Create Payment - SIFDS Insurance{% endblock %}
+{% block page_title %}Create Payment{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}" class="active"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px">
+  <div class="card-head"><h3>New payment</h3></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Policyholder</label>
+        <select name="user_id" required>
+          <option value="">Select a policyholder...</option>
+          {% for u in users %}
+            <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} ({{ u.email }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Amount (R)</label>
+          <input type="number" name="amount" min="0" step="0.01" required>
+        </div>
+        <div class="field">
+          <label>Due date</label>
+          <input type="date" name="due_date" required>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Payment type</label>
+          <select name="payment_type">
+            <option value="premium">Premium</option>
+            <option value="payout">Claim Payout</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Payment method</label>
+          <select name="payment_method">
+            <option value="card">Card</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="debit_order">Debit Order</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select name="status">
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Link to policy (optional)</label>
+          <select name="policy_id">
+            <option value="">None</option>
+            {% for p in policies %}
+              <option value="{{ p.id }}">{{ p.policy_number }} - {{ p.user.get_full_name|default:p.user.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Link to claim (optional)</label>
+          <select name="claim_id">
+            <option value="">None</option>
+            {% for c in claims %}
+              <option value="{{ c.id }}">{{ c.claim_number }} - {{ c.user.get_full_name|default:c.user.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Create payment</button>
+      <a href="{% url 'staff_payments' %}" class="btn">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

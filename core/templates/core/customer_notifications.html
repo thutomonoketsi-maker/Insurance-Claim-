@@ -1,0 +1,45 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Notifications - SIFDS Insurance{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}" class="active"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-body" style="padding:0">
+    {% for n in notifications %}
+    <div style="padding:16px 20px; border-bottom:1px solid var(--border); {% if not n.is_read %}background:var(--primary-light){% endif %}">
+      <div class="row between">
+        <div>
+          <strong>{{ n.title }}</strong>
+          <p class="text-sm text-muted mt-8">{{ n.message }}</p>
+        </div>
+        <div class="text-muted text-sm">{{ n.created_at|timesince }} ago</div>
+      </div>
+      {% if not n.is_read %}
+      <form method="post" style="margin-top:8px">
+        {% csrf_token %}
+        <input type="hidden" name="notification_id" value="{{ n.id }}">
+        <button type="submit" class="btn btn-sm">Mark as read</button>
+      </form>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty"><p>No notifications yet.</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

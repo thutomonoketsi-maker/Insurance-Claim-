@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Log In - SIFDS Insurance{% endblock %}
+
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a href="{% url 'home' %}" class="brand"><span class="dot"></span> SIFDS Insurance</a>
+    <h2>Welcome back</h2>
+    <p class="sub">Log in to your account</p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Email address</label>
+        <input type="text" name="username" placeholder="you@example.com" required autofocus>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="Enter your password" required>
+      </div>
+      <div class="row between">
+        <label class="row text-sm text-muted" style="gap:6px">
+          <input type="checkbox" name="remember"> Remember me
+        </label>
+        <span class="text-sm text-muted">Need help? Contact your administrator.</span>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center">Log in</button>
+      </div>
+    </form>
+
+    <p class="alt">New here? <a href="{% url 'register' %}">Create a policyholder account</a></p>
+  </div>
+</div>
+{% endblock %}

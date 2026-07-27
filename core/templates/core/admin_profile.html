@@ -1,0 +1,30 @@
+{% extends 'core/base.html' %}
+
+{% block title %}My Profile - SIFDS Insurance{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'admin_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'admin_users' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Users</a>
+  <a href="{% url 'admin_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'admin_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'admin_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'admin_staff' %}"><span class="ico"><i class="fa-solid fa-users"></i></span> Staff</a>
+  <a href="{% url 'admin_logs' %}"><span class="ico"><i class="fa-solid fa-list"></i></span> Activity Log</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'admin_profile' %}" class="active"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <div class="card-body">
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Name</p><p>{{ request.user.get_full_name|default:request.user.username }}</p></div>
+      <div><p class="text-muted text-sm">Email</p><p>{{ request.user.email }}</p></div>
+      <div><p class="text-muted text-sm">Role</p><p>{{ request.user.profile.get_role_display }}</p></div>
+      <div><p class="text-muted text-sm">Phone</p><p>{{ request.user.profile.phone|default:"-" }}</p></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

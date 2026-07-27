@@ -1,0 +1,75 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Staff Dashboard - SIFDS Insurance{% endblock %}
+{% block page_title %}Staff Dashboard{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}" class="active"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="label">Pending applications</div><div class="value">{{ pending_policies }}</div></div>
+  <div class="stat"><div class="label">New claims</div><div class="value">{{ pending_claims }}</div></div>
+  <div class="stat"><div class="label">Under review</div><div class="value">{{ under_review }}</div></div>
+  <div class="stat"><div class="label">Active policies</div><div class="value">{{ active_policies }}</div></div>
+</div>
+
+<div class="row between mb-16">
+  <h3 style="font-size:16px; font-weight:600">Recent claims</h3>
+  <a href="{% url 'staff_claims' %}" class="btn btn-sm">View all</a>
+</div>
+<div class="card mb-24">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim</th><th>Policyholder</th><th>Amount</th><th>Status</th><th>Submitted</th></tr></thead>
+      <tbody>
+        {% for claim in recent_claims %}
+        <tr>
+          <td><a href="{% url 'staff_claim_review' claim.id %}">{{ claim.claim_number }}</a></td>
+          <td>{{ claim.user.get_full_name|default:claim.user.username }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td><span class="badge {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ claim.submitted_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty"><p>No claims yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row between mb-16">
+  <h3 style="font-size:16px; font-weight:600">Recent applications</h3>
+  <a href="{% url 'staff_applications' %}" class="btn btn-sm">View all</a>
+</div>
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Policy</th><th>Applicant</th><th>Type</th><th>Coverage</th><th>Status</th><th>Applied</th></tr></thead>
+      <tbody>
+        {% for policy in recent_policies %}
+        <tr>
+          <td><a href="{% url 'staff_process_application' policy.id %}">{{ policy.policy_number }}</a></td>
+          <td>{{ policy.user.get_full_name|default:policy.user.username }}</td>
+          <td>{{ policy.type_display }}</td>
+          <td>R {{ policy.coverage_amount|floatformat:2 }}</td>
+          <td><span class="badge {{ policy.status }}">{{ policy.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ policy.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6"><div class="empty"><p>No applications yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

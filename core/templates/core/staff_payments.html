@@ -1,0 +1,48 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Payments - SIFDS Insurance{% endblock %}
+{% block page_title %}Payments{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}" class="active"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <div class="stat-grid" style="margin-bottom:0">
+    <div class="stat"><div class="label">Total completed</div><div class="value">R {{ total_completed|floatformat:2 }}</div></div>
+    <div class="stat"><div class="label">Pending</div><div class="value">{{ pending_count }}</div></div>
+  </div>
+  <a href="{% url 'staff_create_payment' %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Create payment</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Payment</th><th>User</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for payment in payments %}
+        <tr>
+          <td>{{ payment.payment_number }}</td>
+          <td>{{ payment.user.get_full_name|default:payment.user.username }}</td>
+          <td>{{ payment.get_payment_type_display }}</td>
+          <td>R {{ payment.amount|floatformat:2 }}</td>
+          <td>{{ payment.get_payment_method_display }}</td>
+          <td><span class="badge {{ payment.status }}">{{ payment.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ payment.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty"><p>No payments recorded.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

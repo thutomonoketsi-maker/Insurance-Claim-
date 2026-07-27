@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+
+{% block title %}My Profile - SIFDS Insurance{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}" class="active"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px">
+  <div class="card-head"><h3>Personal details</h3></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field"><label>First name</label><input type="text" name="first_name" value="{{ request.user.first_name }}"></div>
+        <div class="field"><label>Last name</label><input type="text" name="last_name" value="{{ request.user.last_name }}"></div>
+      </div>
+      <div class="field"><label>Email</label><input type="email" name="email" value="{{ request.user.email }}"></div>
+      <div class="field"><label>Phone</label><input type="text" name="phone" value="{{ request.user.profile.phone }}"></div>
+      <div class="field"><label>ID number</label><input type="text" name="id_number" value="{{ request.user.profile.id_number }}" readonly></div>
+      <div class="field"><label>Address</label><textarea name="address" rows="2">{{ request.user.profile.address }}</textarea></div>
+      <div class="form-grid">
+        <div class="field"><label>City</label><input type="text" name="city" value="{{ request.user.profile.city }}"></div>
+        <div class="field"><label>Province</label><input type="text" name="province" value="{{ request.user.profile.province }}"></div>
+      </div>
+      <div class="field"><label>Postal code</label><input type="text" name="postal_code" value="{{ request.user.profile.postal_code }}"></div>
+      <button type="submit" class="btn btn-primary">Save changes</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

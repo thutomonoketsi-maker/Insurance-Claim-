@@ -1,0 +1,84 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Submit a Claim - SIFDS Insurance{% endblock %}
+{% block page_title %}Submit a Claim{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}" class="active"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px">
+  <div class="card-head"><h3>New claim</h3></div>
+  <div class="card-body">
+    {% if not policies %}
+      <div class="empty">
+        <p>You need an active policy before you can submit a claim.</p>
+        <a href="{% url 'customer_purchase_policy' %}" class="btn btn-primary btn-sm mt-8">Apply for cover</a>
+      </div>
+    {% else %}
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="field">
+        <label>Policy</label>
+        <select name="policy_id" required>
+          <option value="">Select a policy...</option>
+          {% for policy in policies %}
+            <option value="{{ policy.id }}">{{ policy.policy_number }} - {{ policy.type_display }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Incident type</label>
+          <select name="incident_type" required>
+            <option value="">Select...</option>
+            <option value="accident">Accident</option>
+            <option value="theft">Theft</option>
+            <option value="damage">Damage</option>
+            <option value="fire">Fire</option>
+            <option value="natural_disaster">Natural Disaster</option>
+            <option value="medical">Medical Emergency</option>
+            <option value="death">Death Claim</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Incident date</label>
+          <input type="date" name="incident_date" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Incident location</label>
+        <input type="text" name="incident_location" placeholder="Where did it happen?">
+      </div>
+      <div class="field">
+        <label>Amount claimed (R)</label>
+        <input type="number" name="amount_claimed" min="0" step="0.01" required>
+      </div>
+      <div class="field">
+        <label>What happened?</label>
+        <textarea name="incident_description" rows="4" placeholder="Describe the incident..." required></textarea>
+      </div>
+      <div class="field">
+        <label>Supporting documents (optional)</label>
+        <input type="file" name="documents" multiple accept="image/jpeg,image/png,application/pdf">
+        <div class="hint">Attach police reports, photos, medical reports, etc. JPG, PNG, or PDF. Max 5MB per file.</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit claim</button>
+      <a href="{% url 'customer_claims' %}" class="btn">Cancel</a>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

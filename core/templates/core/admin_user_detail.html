@@ -1,0 +1,84 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ target_user.get_full_name|default:target_user.username }} - SIFDS Insurance{% endblock %}
+{% block page_title %}User Details{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'admin_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'admin_users' %}" class="active"><span class="ico"><i class="fa-regular fa-user"></i></span> Users</a>
+  <a href="{% url 'admin_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'admin_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'admin_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'admin_staff' %}"><span class="ico"><i class="fa-solid fa-users"></i></span> Staff</a>
+  <a href="{% url 'admin_logs' %}"><span class="ico"><i class="fa-solid fa-list"></i></span> Activity Log</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'admin_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <div>
+    <h3 style="font-size:18px; font-weight:600">{{ target_user.get_full_name|default:target_user.username }}</h3>
+    <p class="text-muted text-sm">{{ target_user.email }}</p>
+  </div>
+  <span class="badge {{ target_user.profile.status }}">{{ target_user.profile.get_status_display }}</span>
+</div>
+
+<div class="card mb-24">
+  <div class="card-body">
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Role</p><p>{{ target_user.profile.get_role_display }}</p></div>
+      <div><p class="text-muted text-sm">Phone</p><p>{{ target_user.profile.phone|default:"-" }}</p></div>
+      <div><p class="text-muted text-sm">ID number</p><p>{{ target_user.profile.id_number|default:"-" }}</p></div>
+      <div><p class="text-muted text-sm">Joined</p><p>{{ target_user.date_joined|date:"d M Y" }}</p></div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-24">
+  <div class="card-head"><h3>Policies ({{ policies.count }})</h3></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Policy</th><th>Type</th><th>Coverage</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for p in policies %}
+        <tr><td>{{ p.policy_number }}</td><td>{{ p.type_display }}</td><td>R {{ p.coverage_amount|floatformat:2 }}</td><td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td></tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>No policies.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-24">
+  <div class="card-head"><h3>Claims ({{ claims.count }})</h3></div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim</th><th>Amount</th><th>Status</th><th>Submitted</th></tr></thead>
+      <tbody>
+        {% for c in claims %}
+        <tr><td>{{ c.claim_number }}</td><td>R {{ c.amount_claimed|floatformat:2 }}</td><td><span class="badge {{ c.status }}">{{ c.get_status_display }}</span></td><td class="text-muted text-sm">{{ c.submitted_at|date:"Y-m-d" }}</td></tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>No claims.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>Account status</h3></div>
+  <div class="card-body">
+    <form method="post" class="row" style="gap:12px">
+      {% csrf_token %}
+      {% if target_user.profile.status == 'active' %}
+        <button type="submit" name="action" value="suspend" class="btn btn-danger">Suspend account</button>
+      {% else %}
+        <button type="submit" name="action" value="activate" class="btn btn-primary">Activate account</button>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Verify Document - SIFDS Insurance{% endblock %}
+{% block page_title %}Verify Document{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}" class="active"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <div>
+    <h3 style="font-size:18px; font-weight:600">{{ document.document_name }}</h3>
+    <p class="text-muted text-sm">{{ document.get_document_type_display }} - {{ document.user.get_full_name|default:document.user.username }}</p>
+  </div>
+  <span class="badge {{ document.status }}">{{ document.get_status_display }}</span>
+</div>
+
+<div class="card mb-24">
+  <div class="card-body">
+    <p class="text-muted text-sm mb-8">Uploaded</p>
+    <p class="mb-16">{{ document.uploaded_at|date:"d M Y H:i" }}</p>
+    <p class="text-muted text-sm mb-8">File</p>
+    <p><a href="{{ document.document_file.url }}" target="_blank">{{ document.document_file.name|slice:"24:" }}</a></p>
+  </div>
+</div>
+
+{% if document.status == 'pending' %}
+<div class="card">
+  <div class="card-head"><h3>Decision</h3></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row" style="gap:12px">
+        <button type="submit" name="action" value="verify" class="btn btn-primary">Verify</button>
+        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+      </div>
+      <div class="field mt-16">
+        <label>Rejection reason (if rejecting)</label>
+        <textarea name="reason" rows="2"></textarea>
+      </div>
+    </form>
+  </div>
+</div>
+{% else %}
+<a href="{% url 'staff_documents' %}" class="btn">Back to documents</a>
+{% endif %}
+{% endblock %}

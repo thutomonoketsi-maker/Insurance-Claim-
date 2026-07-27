@@ -1,0 +1,44 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Cancel Policy - SIFDS Insurance{% endblock %}
+{% block page_title %}Cancel Policy{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}" class="active"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <div class="card-head"><h3>Cancel policy {{ policy.policy_number }}</h3></div>
+  <div class="card-body">
+    <div class="form-grid mb-16">
+      <div><p class="text-muted text-sm">Type</p><p>{{ policy.type_display }}</p></div>
+      <div><p class="text-muted text-sm">Coverage</p><p>R {{ policy.coverage_amount|floatformat:2 }}</p></div>
+      <div><p class="text-muted text-sm">End date</p><p>{{ policy.end_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">Status</p><p><span class="badge {{ policy.status }}">{{ policy.get_status_display }}</span></p></div>
+    </div>
+    <div class="alert alert-error">Cancelling this policy will end your coverage. Any open claims will still be processed.</div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Reason for cancellation</label>
+        <textarea name="reason" rows="3" placeholder="Please tell us why you're cancelling..." required></textarea>
+      </div>
+      <div class="row" style="gap:12px">
+        <button type="submit" class="btn btn-danger">Confirm cancellation</button>
+        <a href="{% url 'customer_policy_detail' policy.id %}" class="btn">Go back</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

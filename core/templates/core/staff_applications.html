@@ -1,0 +1,40 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Applications - SIFDS Insurance{% endblock %}
+{% block page_title %}Policy Applications{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}" class="active"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Policy</th><th>Applicant</th><th>Type</th><th>Coverage</th><th>Premium</th><th>Applied</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for policy in policies %}
+        <tr>
+          <td>{{ policy.policy_number }}</td>
+          <td>{{ policy.user.get_full_name|default:policy.user.username }}</td>
+          <td>{{ policy.type_display }}</td>
+          <td>R {{ policy.coverage_amount|floatformat:2 }}</td>
+          <td>R {{ policy.premium_amount|floatformat:2 }}</td>
+          <td class="text-muted text-sm">{{ policy.created_at|date:"Y-m-d" }}</td>
+          <td><a href="{% url 'staff_process_application' policy.id %}" class="btn btn-sm">Review</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty"><p>No pending applications.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

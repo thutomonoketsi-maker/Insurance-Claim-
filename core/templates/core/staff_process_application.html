@@ -1,0 +1,60 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ policy.policy_number }} - SIFDS Insurance{% endblock %}
+{% block page_title %}Review Application{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}" class="active"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <div>
+    <h3 style="font-size:18px; font-weight:600">{{ policy.policy_number }}</h3>
+    <p class="text-muted text-sm">{{ policy.type_display }} - {{ policy.user.get_full_name|default:policy.user.username }}</p>
+  </div>
+  <span class="badge {{ policy.status }}">{{ policy.get_status_display }}</span>
+</div>
+
+<div class="card mb-24">
+  <div class="card-head"><h3>Application details</h3></div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Applicant</p><p>{{ policy.user.get_full_name|default:policy.user.username }}</p></div>
+      <div><p class="text-muted text-sm">Email</p><p>{{ policy.user.email }}</p></div>
+      <div><p class="text-muted text-sm">Coverage</p><p>R {{ policy.coverage_amount|floatformat:2 }}</p></div>
+      <div><p class="text-muted text-sm">Premium</p><p>R {{ policy.premium_amount|floatformat:2 }}/month</p></div>
+      <div><p class="text-muted text-sm">Start date</p><p>{{ policy.start_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">End date</p><p>{{ policy.end_date|date:"d M Y" }}</p></div>
+    </div>
+    {% if policy.beneficiary_name %}
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+    <h4 style="font-size:14px; margin-bottom:8px">Beneficiary</h4>
+    <p>{{ policy.beneficiary_name }}{% if policy.beneficiary_relationship %} ({{ policy.beneficiary_relationship }}){% endif %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if policy.status == 'pending' %}
+<div class="card">
+  <div class="card-head"><h3>Decision</h3></div>
+  <div class="card-body">
+    <form method="post" class="row" style="gap:12px">
+      {% csrf_token %}
+      <button type="submit" name="action" value="approve" class="btn btn-primary">Approve</button>
+      <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+      <a href="{% url 'staff_applications' %}" class="btn">Back</a>
+    </form>
+  </div>
+</div>
+{% else %}
+<a href="{% url 'staff_applications' %}" class="btn">Back to applications</a>
+{% endif %}
+{% endblock %}

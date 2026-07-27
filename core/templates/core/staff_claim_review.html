@@ -1,0 +1,98 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Review Claim - SIFDS Insurance{% endblock %}
+{% block page_title %}Review Claim{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'staff_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'staff_applications' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Applications</a>
+  <a href="{% url 'staff_claims' %}" class="active"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'staff_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'staff_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'staff_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <div>
+    <h3 style="font-size:18px; font-weight:600">{{ claim.claim_number }}</h3>
+    <p class="text-muted text-sm">{{ claim.user.get_full_name|default:claim.user.username }} - {{ claim.incident_type_display }}</p>
+  </div>
+  <span class="badge {{ claim.status }}">{{ claim.get_status_display }}</span>
+</div>
+
+<div class="stat-grid">
+  <div class="stat"><div class="label">Amount claimed</div><div class="value">R {{ claim.amount_claimed|floatformat:2 }}</div></div>
+  <div class="stat"><div class="label">Policy</div><div class="value text-sm" style="font-size:15px">{{ claim.policy.policy_number }}</div></div>
+  <div class="stat"><div class="label">Fraud score</div>
+    <div class="value">{% if claim.fraud_flagged %}<span style="color:var(--danger)">{{ claim.fraud_score }}</span>{% else %}{{ claim.fraud_score }}{% endif %}</div>
+    {% if claim.fraud_flagged %}<div class="sub" style="color:var(--danger)">Flagged for review</div>{% endif %}
+  </div>
+</div>
+
+<div class="card mb-24">
+  <div class="card-head"><h3>Incident details</h3></div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Type</p><p>{{ claim.incident_type_display }}</p></div>
+      <div><p class="text-muted text-sm">Date</p><p>{{ claim.incident_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">Location</p><p>{{ claim.incident_location|default:"-" }}</p></div>
+      <div><p class="text-muted text-sm">Submitted</p><p>{{ claim.submitted_at|date:"d M Y" }}</p></div>
+    </div>
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+    <p class="text-muted text-sm">Description</p>
+    <p>{{ claim.incident_description }}</p>
+    {% if claim.investigation_notes %}
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+    <p class="text-muted text-sm">Investigator notes</p>
+    <p>{{ claim.investigation_notes }}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if claim.status == 'submitted' or claim.status == 'under_review' %}
+<div class="card">
+  <div class="card-head"><h3>Decision</h3></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row" style="gap:12px; flex-wrap:wrap">
+        <button type="submit" name="action" value="approve" class="btn btn-primary">Approve claim</button>
+        <button type="submit" name="action" value="investigate" class="btn">Send for investigation</button>
+        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+      </div>
+      <div class="field mt-16">
+        <label>Assign to investigator (for investigation)</label>
+        <select name="investigator_id">
+          <option value="">Auto-assign</option>
+          {% for inv in investigators %}
+          <option value="{{ inv.id }}">{{ inv.get_full_name|default:inv.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if claim.status == 'submitted' %}
+      <div class="field mt-16">
+        <label>Rejection reason (if rejecting)</label>
+        <textarea name="reason" rows="2" placeholder="Explain why this claim is being rejected..."></textarea>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
+{% elif claim.status == 'approved' %}
+<div class="card">
+  <div class="card-head"><h3>Pay out claim</h3></div>
+  <div class="card-body">
+    <div class="alert alert-success mb-16">This claim has been approved. You can now pay out R {{ claim.amount_approved|default:claim.amount_claimed|floatformat:2 }} to {{ claim.user.get_full_name|default:claim.user.username }} via PayShap.</div>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit" name="action" value="pay_out" class="btn btn-primary"><i class="fa-solid fa-bolt"></i> Pay R {{ claim.amount_approved|default:claim.amount_claimed|floatformat:2 }} via PayShap</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<a href="{% url 'staff_claims' %}" class="btn">Back to claims</a>
+{% endif %}
+{% endblock %}

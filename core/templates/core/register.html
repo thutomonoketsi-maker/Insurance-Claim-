@@ -1,0 +1,70 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Sign Up - SIFDS Insurance{% endblock %}
+
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-card" style="max-width:480px">
+    <a href="{% url 'home' %}" class="brand"><span class="dot"></span> SIFDS Insurance</a>
+    <h2>Create your account</h2>
+    <p class="sub">Policyholder registration</p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-grid">
+        <div class="field">
+          <label>First name</label>
+          <input type="text" name="first_name" required>
+        </div>
+        <div class="field">
+          <label>Last name</label>
+          <input type="text" name="last_name" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" name="email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Phone number</label>
+          <input type="text" name="phone" placeholder="e.g. 082 123 4567">
+        </div>
+        <div class="field">
+          <label>ID number</label>
+          <input type="text" name="id_number" required>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Password</label>
+          <input type="password" name="password" required>
+          <div class="hint">At least 8 characters</div>
+        </div>
+        <div class="field">
+          <label>Confirm password</label>
+          <input type="password" name="password2" required>
+        </div>
+      </div>
+      <div class="field">
+        <label class="row text-sm" style="gap:8px">
+          <input type="checkbox" name="terms" required> I accept the Terms &amp; Conditions
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center">Create account</button>
+      </div>
+    </form>
+
+    <p class="alt">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+    <p class="alt text-sm">Staff, investigators, and administrators: please use the login page.</p>
+  </div>
+</div>
+{% endblock %}

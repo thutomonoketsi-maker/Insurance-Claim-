@@ -1,0 +1,38 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Renew Policy - SIFDS Insurance{% endblock %}
+{% block page_title %}Renew Policy{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}" class="active"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:560px">
+  <div class="card-head"><h3>Renew policy {{ policy.policy_number }}</h3></div>
+  <div class="card-body">
+    <div class="form-grid mb-16">
+      <div><p class="text-muted text-sm">Type</p><p>{{ policy.type_display }}</p></div>
+      <div><p class="text-muted text-sm">Coverage</p><p>R {{ policy.coverage_amount|floatformat:2 }}</p></div>
+      <div><p class="text-muted text-sm">Current end date</p><p>{{ policy.end_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">Premium</p><p>R {{ policy.premium_amount|floatformat:2 }}/month</p></div>
+    </div>
+    <div class="alert alert-info">Renewing will extend your policy by 12 months from the current end date.</div>
+    <form method="post" class="row" style="gap:12px">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Confirm renewal</button>
+      <a href="{% url 'customer_policy_detail' policy.id %}" class="btn">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

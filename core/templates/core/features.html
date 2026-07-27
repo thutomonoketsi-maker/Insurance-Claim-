@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Features - SIFDS Insurance</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <nav class="site-nav">
+    <a href="{% url 'home' %}" class="brand"><span class="dot"></span> SIFDS Insurance</a>
+    <div class="links">
+      <a href="{% url 'features' %}">Features</a>
+      <a href="{% url 'about' %}">About</a>
+      <a href="{% url 'contact' %}">Contact</a>
+      <a href="{% url 'login' %}" class="btn btn-sm">Log in</a>
+      <a href="{% url 'register' %}" class="btn btn-primary btn-sm">Sign up</a>
+    </div>
+  </nav>
+
+  <section class="section">
+    <h2>What you can do</h2>
+    <p class="lead">A clear set of tools for policyholders, staff, investigators, and administrators.</p>
+    <div class="feature-grid">
+      <div class="feature"><div class="ico"><i class="fa-regular fa-file-lines"></i></div><h3>Policy management</h3><p>Apply for cover, view policy details, renew, or cancel.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-regular fa-clipboard"></i></div><h3>Claim management</h3><p>Submit claims with documents and track them through to resolution.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-solid fa-magnifying-glass"></i></div><h3>Fraud detection</h3><p>Each claim is screened and given a risk score automatically.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-regular fa-user"></i></div><h3>Investigations</h3><p>Investigators review flagged claims and submit findings.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-regular fa-credit-card"></i></div><h3>Payments</h3><p>Premiums and claim payouts are tracked in one place.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-regular fa-bell"></i></div><h3>Notifications</h3><p>Stay informed about your claims, payments, and policies.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-solid fa-gauge"></i></div><h3>Dashboards</h3><p>Each role gets a clear overview of what matters to them.</p></div>
+      <div class="feature"><div class="ico"><i class="fa-regular fa-folder"></i></div><h3>Documents</h3><p>Upload and store supporting documents securely.</p></div>
+    </div>
+  </section>
+
+  <footer class="site-footer">&copy; {% now "Y" %} SIFDS Insurance.</footer>
+</body>
+</html>

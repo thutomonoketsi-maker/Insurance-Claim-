@@ -1,0 +1,78 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Documents - SIFDS Insurance{% endblock %}
+{% block page_title %}Documents{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}" class="active"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="label">Verified</div><div class="value">{{ verified_count }}</div></div>
+  <div class="stat"><div class="label">Pending</div><div class="value">{{ pending_count }}</div></div>
+</div>
+
+<div class="card mb-24">
+  <div class="card-head"><h3>Upload a document</h3></div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="field">
+        <label>Document type</label>
+        <select name="document_type" required>
+          <option value="">Select...</option>
+          <option value="id_document">ID Document</option>
+          <option value="proof_of_address">Proof of Address</option>
+          <option value="police_report">Police Report</option>
+          <option value="accident_photos">Accident Photos</option>
+          <option value="medical_report">Medical Report</option>
+          <option value="death_certificate">Death Certificate</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Document name (optional)</label>
+        <input type="text" name="document_name" placeholder="e.g. ID copy">
+      </div>
+      <div class="field">
+        <label>File</label>
+        <input type="file" name="document_file" accept="image/jpeg,image/png,application/pdf" required>
+        <div class="hint">JPG, PNG, or PDF. Max 5MB.</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+  </div>
+</div>
+
+<h3 style="font-size:16px; font-weight:600" class="mb-16">Your documents</h3>
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Document</th><th>Type</th><th>Status</th><th>Uploaded</th></tr></thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td>{{ doc.document_name }}</td>
+          <td>{{ doc.get_document_type_display }}</td>
+          <td><span class="badge {{ doc.status }}">{{ doc.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ doc.uploaded_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>No documents uploaded yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

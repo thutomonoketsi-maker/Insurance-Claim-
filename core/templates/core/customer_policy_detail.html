@@ -1,0 +1,117 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ policy.policy_number }} - SIFDS Insurance{% endblock %}
+{% block page_title %}Policy Details{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}" class="active"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <div>
+    <h3 style="font-size:18px; font-weight:600">{{ policy.policy_number }}</h3>
+    <p class="text-muted text-sm">{{ policy.type_display }}</p>
+  </div>
+  <span class="badge {{ policy.status }}">{{ policy.get_status_display }}</span>
+</div>
+
+<div class="stat-grid">
+  <div class="stat"><div class="label">Coverage amount</div><div class="value">R {{ policy.coverage_amount|floatformat:2 }}</div></div>
+  <div class="stat"><div class="label">Monthly premium</div><div class="value">R {{ policy.premium_amount|floatformat:2 }}</div></div>
+  <div class="stat"><div class="label">Days remaining</div><div class="value">{{ days_remaining }}</div></div>
+</div>
+
+{% if policy.status == 'active' or policy.status == 'expired' %}
+<div class="row mb-24" style="gap:10px; align-items:center">
+  {% if month_paid %}
+  <span class="badge completed" style="font-size:13px; padding:6px 14px"><i class="fa-solid fa-circle-check"></i> Payment for this month was made</span>
+  {% else %}
+  <a href="{% url 'customer_payshap_payment' policy.id %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-bolt"></i> Pay with PayShap</a>
+  {% endif %}
+  <a href="{% url 'customer_renew_policy' policy.id %}" class="btn btn-sm"><i class="fa-solid fa-rotate-right"></i> Renew policy</a>
+  {% if policy.status == 'active' %}
+  <a href="{% url 'customer_cancel_policy' policy.id %}" class="btn btn-danger btn-sm"><i class="fa-solid fa-ban"></i> Cancel policy</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card mb-24">
+  <div class="card-head"><h3>Policy details</h3></div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Start date</p><p>{{ policy.start_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">End date</p><p>{{ policy.end_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">Renewal date</p><p>{{ policy.renewal_date|date:"d M Y" }}</p></div>
+      <div><p class="text-muted text-sm">Payment frequency</p><p>{{ policy.payment_frequency|title }}</p></div>
+    </div>
+    {% if policy.beneficiary_name %}
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+    <h4 style="font-size:14px; margin-bottom:8px">Beneficiary</h4>
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Name</p><p>{{ policy.beneficiary_name }}</p></div>
+      <div><p class="text-muted text-sm">ID number</p><p>{{ policy.beneficiary_id|default:"-" }}</p></div>
+      <div><p class="text-muted text-sm">Relationship</p><p>{{ policy.beneficiary_relationship|default:"-" }}</p></div>
+      <div><p class="text-muted text-sm">Contact</p><p>{{ policy.beneficiary_phone|default:"-" }} {{ policy.beneficiary_email|default:"" }}</p></div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row between mb-16">
+  <h3 style="font-size:16px; font-weight:600">Claims on this policy</h3>
+  <a href="{% url 'customer_submit_claim' %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Submit claim</a>
+</div>
+<div class="card mb-24">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim number</th><th>Incident</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for claim in claims %}
+        <tr>
+          <td><a href="{% url 'customer_claim_detail' claim.id %}">{{ claim.claim_number }}</a></td>
+          <td>{{ claim.incident_type_display }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td><span class="badge {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ claim.submitted_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty"><p>No claims on this policy yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3 style="font-size:16px; font-weight:600" class="mb-16">Payments</h3>
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Payment number</th><th>Amount</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for payment in payments %}
+        <tr>
+          <td>{{ payment.payment_number }}</td>
+          <td>R {{ payment.amount|floatformat:2 }}</td>
+          <td>{{ payment.get_payment_type_display }}</td>
+          <td><span class="badge {{ payment.status }}">{{ payment.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ payment.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty"><p>No payments recorded.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

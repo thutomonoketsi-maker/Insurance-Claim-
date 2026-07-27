@@ -1,0 +1,37 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Cases - SIFDS Insurance{% endblock %}
+{% block page_title %}Investigation Cases{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'investigator_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'investigator_cases' %}" class="active"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Cases</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'investigator_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim</th><th>Policyholder</th><th>Incident</th><th>Amount</th><th>Fraud score</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for claim in cases %}
+        <tr>
+          <td>{{ claim.claim_number }}</td>
+          <td>{{ claim.user.get_full_name|default:claim.user.username }}</td>
+          <td>{{ claim.incident_type_display }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td>{% if claim.fraud_flagged %}<span class="badge rejected">{{ claim.fraud_score }}</span>{% else %}{{ claim.fraud_score }}{% endif %}</td>
+          <td><span class="badge {{ claim.status }}">{{ claim.get_status_display }}</span></td>
+          <td><a href="{% url 'investigator_case_detail' claim.id %}" class="btn btn-sm">Open</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty"><p>No cases available.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
