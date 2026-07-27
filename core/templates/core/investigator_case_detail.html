@@ -45,20 +45,36 @@
 </div>
 
 <div class="card">
-  <div class="card-head"><h3>Investigation notes</h3></div>
+  <div class="card-head"><h3>Investigation</h3></div>
   <div class="card-body">
     {% if claim.investigation_notes %}
     <div class="alert alert-info mb-16"><strong>Previous notes:</strong><br>{{ claim.investigation_notes }}</div>
     {% endif %}
+
+    {% if claim.status == 'investigation' %}
+    <p class="text-muted text-sm mb-16">Document your findings below, then choose whether to approve or reject this claim. If you approve, the claim goes back to staff for payout. If you reject, the policyholder is notified with your reason.</p>
     <form method="post">
       {% csrf_token %}
       <div class="field">
-        <label>Your findings</label>
-        <textarea name="notes" rows="4" placeholder="Document your investigation findings..."></textarea>
+        <label>Your findings <span class="text-muted text-sm">(required)</span></label>
+        <textarea name="notes" rows="4" placeholder="Document your investigation findings..." required></textarea>
       </div>
-      <button type="submit" class="btn btn-primary">Submit findings</button>
-      <a href="{% url 'investigator_cases' %}" class="btn">Back</a>
+      <div class="field">
+        <label>Rejection reason <span class="text-muted text-sm">(required if rejecting)</span></label>
+        <textarea name="reason" rows="2" placeholder="Explain to the policyholder why the claim is being rejected..."></textarea>
+      </div>
+      <div class="row" style="gap:12px; flex-wrap:wrap">
+        <button type="submit" name="action" value="approve" class="btn btn-primary">Approve &amp; send to staff for payout</button>
+        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject &amp; notify policyholder</button>
+      </div>
     </form>
+    {% else %}
+    <div class="alert alert-info">This case is no longer under investigation. Status: <strong>{{ claim.get_status_display }}</strong>.</div>
+    {% if claim.rejection_reason %}
+    <div class="alert alert-error mt-16"><strong>Rejection reason:</strong> {{ claim.rejection_reason }}</div>
+    {% endif %}
+    {% endif %}
+    <a href="{% url 'investigator_cases' %}" class="btn mt-16">Back to cases</a>
   </div>
 </div>
 {% endblock %}

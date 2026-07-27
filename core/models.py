@@ -129,6 +129,13 @@ class Claim(models.Model):
     investigation_notes = models.TextField(blank=True)
     rejection_reason = models.TextField(blank=True)
 
+    bank_details_requested = models.BooleanField(default=False)
+    bank_name = models.CharField(max_length=100, blank=True)
+    account_holder = models.CharField(max_length=200, blank=True)
+    account_number = models.CharField(max_length=30, blank=True)
+    branch_code = models.CharField(max_length=20, blank=True)
+    bank_details_submitted_at = models.DateTimeField(null=True, blank=True)
+
     submitted_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
@@ -179,6 +186,9 @@ class Payment(models.Model):
 
     due_date = models.DateField()
     paid_at = models.DateTimeField(null=True, blank=True)
+    reference = models.CharField(max_length=100, blank=True)
+    invoice_number = models.CharField(max_length=50, blank=True)
+    coverage_month = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

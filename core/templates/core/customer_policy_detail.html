@@ -97,18 +97,19 @@
 <div class="card">
   <div class="table-wrap">
     <table class="data">
-      <thead><tr><th>Payment number</th><th>Amount</th><th>Type</th><th>Status</th><th>Date</th></tr></thead>
+      <thead><tr><th>Invoice</th><th>Amount</th><th>Type</th><th>Status</th><th>Date</th><th></th></tr></thead>
       <tbody>
         {% for payment in payments %}
         <tr>
-          <td>{{ payment.payment_number }}</td>
+          <td>{{ payment.invoice_number|default:payment.payment_number }}</td>
           <td>R {{ payment.amount|floatformat:2 }}</td>
           <td>{{ payment.get_payment_type_display }}</td>
           <td><span class="badge {{ payment.status }}">{{ payment.get_status_display }}</span></td>
           <td class="text-muted text-sm">{{ payment.created_at|date:"Y-m-d" }}</td>
+          <td><a href="{% url 'customer_invoice' payment.id %}" class="btn btn-sm"><i class="fa-solid fa-file-invoice"></i> Invoice</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="5"><div class="empty"><p>No payments recorded.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty"><p>No payments recorded.</p></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

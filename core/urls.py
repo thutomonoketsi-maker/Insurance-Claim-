@@ -26,6 +26,7 @@ urlpatterns = [
     path('dashboard/customer/claims/submit/', views.customer_submit_claim, name='customer_submit_claim'),
     path('dashboard/customer/claims/<int:claim_id>/', views.customer_claim_detail, name='customer_claim_detail'),
     path('dashboard/customer/payments/', views.customer_payments, name='customer_payments'),
+    path('dashboard/customer/payments/invoice/<int:payment_id>/', views.customer_invoice, name='customer_invoice'),
     path('dashboard/customer/documents/', views.customer_documents, name='customer_documents'),
     path('dashboard/customer/notifications/', views.customer_notifications, name='customer_notifications'),
     path('dashboard/customer/profile/', views.customer_profile, name='customer_profile'),

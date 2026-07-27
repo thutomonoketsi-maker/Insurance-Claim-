@@ -17,10 +17,37 @@
 {% endblock %}
 
 {% block content %}
+<div class="stat-grid">
+  <div class="stat"><div class="label">Paid this month</div><div class="value">{{ paid_this_month }}</div><div class="sub">{{ current_month }}</div></div>
+  <div class="stat"><div class="label">Unpaid this month</div><div class="value" style="color:var(--warning)">{{ unpaid_this_month }}</div><div class="sub">{{ current_month }}</div></div>
+</div>
+
+<h3 style="font-size:16px; font-weight:600" class="mb-16">Monthly premium tracking &mdash; {{ current_month }}</h3>
+<div class="card mb-24">
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Policyholder</th><th>Policy</th><th>Premium</th><th>This month</th></tr></thead>
+      <tbody>
+        {% for m in monthly_status %}
+        <tr>
+          <td>{{ m.policy.user.get_full_name|default:m.policy.user.username }}</td>
+          <td>{{ m.policy.policy_number }} ({{ m.policy.type_display }})</td>
+          <td>R {{ m.premium|floatformat:2 }}</td>
+          <td>{% if m.paid %}<span class="badge completed"><i class="fa-solid fa-circle-check"></i> Paid</span>{% else %}<span class="badge pending">Awaiting payment</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4"><div class="empty"><p>No active policies.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3 style="font-size:16px; font-weight:600" class="mb-16">All payments</h3>
 <div class="card">
   <div class="table-wrap">
     <table class="data">
-      <thead><tr><th>Payment</th><th>User</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
+      <thead><tr><th>Payment</th><th>User</th><th>Type</th><th>Amount</th><th>Method</th><th>Status</th><th>Month</th><th>Date</th></tr></thead>
       <tbody>
         {% for p in payments %}
         <tr>
@@ -30,10 +57,11 @@
           <td>R {{ p.amount|floatformat:2 }}</td>
           <td>{{ p.get_payment_method_display }}</td>
           <td><span class="badge {{ p.status }}">{{ p.get_status_display }}</span></td>
+          <td class="text-muted text-sm">{{ p.coverage_month|default:"-" }}</td>
           <td class="text-muted text-sm">{{ p.created_at|date:"Y-m-d" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="7"><div class="empty"><p>No payments yet.</p></div></td></tr>
+        <tr><td colspan="8"><div class="empty"><p>No payments yet.</p></div></td></tr>
         {% endfor %}
       </tbody>
     </table>

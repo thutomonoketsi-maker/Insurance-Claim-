@@ -1,0 +1,112 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Invoice {{ payment.invoice_number }} - SIFDS Insurance{% endblock %}
+{% block page_title %}Payment Invoice{% endblock %}
+{% block notif_url %}{% url 'customer_notifications' %}{% endblock %}
+
+{% block sidebar %}
+  <div class="group-label">Main</div>
+  <a href="{% url 'customer_dashboard' %}"><span class="ico"><i class="fa-solid fa-gauge"></i></span> Dashboard</a>
+  <a href="{% url 'customer_policies' %}"><span class="ico"><i class="fa-regular fa-file-lines"></i></span> Policies</a>
+  <a href="{% url 'customer_claims' %}"><span class="ico"><i class="fa-regular fa-clipboard"></i></span> Claims</a>
+  <a href="{% url 'customer_payments' %}" class="active"><span class="ico"><i class="fa-regular fa-credit-card"></i></span> Payments</a>
+  <a href="{% url 'customer_documents' %}"><span class="ico"><i class="fa-regular fa-folder"></i></span> Documents</a>
+  <div class="group-label">Account</div>
+  <a href="{% url 'customer_notifications' %}"><span class="ico"><i class="fa-regular fa-bell"></i></span> Notifications</a>
+  <a href="{% url 'customer_profile' %}"><span class="ico"><i class="fa-regular fa-user"></i></span> Profile</a>
+  <a href="{% url 'customer_settings' %}"><span class="ico"><i class="fa-solid fa-gear"></i></span> Settings</a>
+{% endblock %}
+
+{% block content %}
+<div class="row between mb-16">
+  <h3 style="font-size:18px; font-weight:600">Invoice {{ payment.invoice_number }}</h3>
+  <div class="row" style="gap:10px">
+    <a href="{% url 'customer_payments' %}" class="btn btn-sm">Back to payments</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm"><i class="fa-solid fa-print"></i> Print / Save PDF</button>
+  </div>
+</div>
+
+<div class="card" style="max-width:680px" id="invoice-print">
+  <div class="card-body" style="padding:32px">
+    <div class="row between mb-24">
+      <div>
+        <div style="font-size:20px; font-weight:700; display:flex; align-items:center; gap:8px"><span class="dot" style="display:inline-block; width:11px; height:11px; background:var(--primary); border-radius:50%"></span> SIFDS Insurance</div>
+        <p class="text-muted text-sm" style="margin-top:4px">123 Main Street, Johannesburg, South Africa</p>
+        <p class="text-muted text-sm">support@sifds.co.za &middot; 0800 000 000</p>
+      </div>
+      <div style="text-align:right">
+        <p style="font-size:22px; font-weight:700; color:var(--primary)">INVOICE</p>
+        <p class="text-sm">{{ payment.invoice_number }}</p>
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0">
+
+    <div class="form-grid mb-16">
+      <div>
+        <p class="text-muted text-sm">Billed to</p>
+        <p style="font-weight:600">{{ payment.user.get_full_name|default:payment.user.username }}</p>
+        <p class="text-sm">{{ payment.user.email }}</p>
+      </div>
+      <div style="text-align:right">
+        <p class="text-muted text-sm">Date paid</p>
+        <p>{{ payment.paid_at|date:"d M Y" }}</p>
+        <p class="text-muted text-sm" style="margin-top:8px">Payment method</p>
+        <p>{{ payment.get_payment_method_display }}</p>
+      </div>
+    </div>
+
+    <div class="card" style="border:none; background:var(--bg); margin:20px 0">
+      <div class="card-body">
+        <div class="row between">
+          <div>
+            <p class="text-muted text-sm">Description</p>
+            <p style="font-weight:600">
+              {% if payment.payment_type == 'premium' %}
+                Monthly premium &mdash; {{ payment.coverage_month }}
+                {% if payment.policy %}({{ payment.policy.policy_number }} - {{ payment.policy.type_display }}){% endif %}
+              {% else %}
+                Claim payout &mdash; {% if payment.claim %}{{ payment.claim.claim_number }}{% endif %}
+              {% endif %}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div></div>
+      <div style="text-align:right">
+        <div class="row between" style="padding:8px 0">
+          <span class="text-muted">Subtotal</span>
+          <span>R {{ payment.amount|floatformat:2 }}</span>
+        </div>
+        <div class="row between" style="padding:8px 0">
+          <span class="text-muted">VAT (0% - insurance)</span>
+          <span>R 0.00</span>
+        </div>
+        <hr style="border:none; border-top:1px solid var(--border); margin:8px 0">
+        <div class="row between" style="padding:8px 0">
+          <span style="font-weight:700; font-size:16px">Total</span>
+          <span style="font-weight:700; font-size:18px; color:var(--primary)">R {{ payment.amount|floatformat:2 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin:24px 0 16px">
+
+    <div class="row between">
+      <div>
+        <p class="text-muted text-sm">Status</p>
+        <p><span class="badge {{ payment.status }}">{{ payment.get_status_display }}</span></p>
+      </div>
+      <div>
+        <p class="text-muted text-sm">Reference</p>
+        <p class="text-sm">{{ payment.reference|default:payment.payment_number }}</p>
+      </div>
+    </div>
+
+    <p class="text-muted text-sm" style="margin-top:24px; text-align:center">Thank you for your payment. This invoice serves as your proof of payment for the period shown above.</p>
+  </div>
+</div>
+{% endblock %}

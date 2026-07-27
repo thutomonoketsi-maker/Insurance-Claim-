@@ -32,6 +32,43 @@
   <div class="stat"><div class="label">Policy</div><div class="value text-sm" style="font-size:15px"><a href="{% url 'customer_policy_detail' claim.policy.id %}">{{ claim.policy.policy_number }}</a></div></div>
 </div>
 
+{% if claim.bank_details_requested and claim.status == 'approved' and not claim.account_number %}
+<div class="alert alert-info mb-16">
+  <strong>Bank details required.</strong> Your claim has been approved. Please submit your bank account details below so we can pay out your claim.
+</div>
+<div class="card mb-24">
+  <div class="card-head"><h3>Submit bank details for payout</h3></div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="submit_bank_details">
+      <div class="form-grid">
+        <div class="field"><label>Bank name</label><input type="text" name="bank_name" placeholder="e.g. FNB, Standard Bank, ABSA" required></div>
+        <div class="field"><label>Account holder</label><input type="text" name="account_holder" placeholder="Name on the account" required></div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Account number</label><input type="text" name="account_number" required></div>
+        <div class="field"><label>Branch code</label><input type="text" name="branch_code" placeholder="e.g. 250655" required></div>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit bank details</button>
+    </form>
+  </div>
+</div>
+{% elif claim.account_number %}
+<div class="card mb-24">
+  <div class="card-head"><h3>Bank details on file</h3></div>
+  <div class="card-body">
+    <div class="form-grid">
+      <div><p class="text-muted text-sm">Bank</p><p>{{ claim.bank_name }}</p></div>
+      <div><p class="text-muted text-sm">Account holder</p><p>{{ claim.account_holder }}</p></div>
+      <div><p class="text-muted text-sm">Account number</p><p>{{ claim.account_number }}</p></div>
+      <div><p class="text-muted text-sm">Branch code</p><p>{{ claim.branch_code }}</p></div>
+    </div>
+    <p class="text-muted text-sm" style="margin-top:12px">Submitted on {{ claim.bank_details_submitted_at|date:"d M Y H:i" }}</p>
+  </div>
+</div>
+{% endif %}
+
 <div class="card mb-24">
   <div class="card-head"><h3>Incident details</h3></div>
   <div class="card-body">

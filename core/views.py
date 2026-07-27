@@ -386,7 +386,7 @@ def customer_purchase_policy(request):
         notify(request.user, 'Policy Submitted',
                f'Your {policy.get_policy_type_display()} policy {policy.policy_number} is pending review.',
                category='policy', related_policy=policy,
-               action_url=f'/dashboard/customer/policy/{policy.id}/')
+               action_url=f'/dashboard/customer/policies/{policy.id}/')
         notify_role('staff', 'New Policy Application',
                     f'{request.user.get_full_name()} applied for a {policy.get_policy_type_display()} policy.',
                     category='policy', action_url='/staff/applications/')
@@ -474,7 +474,11 @@ def customer_payshap_payment(request, policy_id):
             messages.error(request, 'Amount must be greater than zero.')
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
-        payment_number = f"PAY-{datetime.now().year}-{Payment.objects.count() + 1001}"
+        now = timezone.now()
+        seq = Payment.objects.count() + 1001
+        payment_number = f"PAY-{now.year}-{seq}"
+        invoice_number = f"INV-{now.year}-{seq}"
+        coverage_month = now.strftime('%Y-%m')
         payment = Payment.objects.create(
             payment_number=payment_number,
             user=request.user,
@@ -483,21 +487,24 @@ def customer_payshap_payment(request, policy_id):
             payment_method='payshap',
             payment_type=payment_type,
             status='completed',
-            due_date=timezone.now().date(),
-            paid_at=timezone.now(),
+            due_date=now.date(),
+            paid_at=now,
             reference=f"PayShap-{payment_number}",
+            invoice_number=invoice_number,
+            coverage_month=coverage_month,
         )
 
         notify(request.user, 'Payment Successful',
-               f'Your PayShap payment of R {amount:.2f} for policy {policy.policy_number} was successful.',
-               category='payment', related_policy=policy, related_payment=payment)
-        notify_role('staff', 'Payment Received',
-                    f'{request.user.get_full_name()} paid R {amount:.2f} via PayShap for {policy.policy_number}.',
+               f'Your PayShap payment of R {amount:.2f} for policy {policy.policy_number} was successful. Invoice {invoice_number} generated.',
+               category='payment', related_policy=policy, related_payment=payment,
+               action_url=f'/dashboard/customer/payments/invoice/{payment.id}/')
+        notify_role('staff', 'Monthly Premium Paid',
+                    f'{request.user.get_full_name()} paid R {amount:.2f} via PayShap for {policy.policy_number} ({now.strftime("%B %Y")}).',
                     category='payment')
-        log_activity(request.user, 'create', f'Paid R {amount:.2f} via PayShap for policy {policy.policy_number}')
+        log_activity(request.user, 'create', f'Paid R {amount:.2f} via PayShap for policy {policy.policy_number} ({coverage_month})')
 
-        messages.success(request, f'PayShap payment of R {amount:.2f} completed successfully.')
-        return redirect('customer_policy_detail', policy_id=policy.id)
+        messages.success(request, f'PayShap payment of R {amount:.2f} completed. Invoice {invoice_number} generated.')
+        return redirect('customer_invoice', payment_id=payment.id)
 
     context = {'policy': policy}
     return render(request, 'core/customer_payshap_payment.html', context)
@@ -571,7 +578,7 @@ def customer_submit_claim(request):
         notify(request.user, 'Claim Submitted',
                f'Your claim {claim_number} has been submitted and is being reviewed.',
                category='claim', related_claim=claim,
-               action_url=f'/dashboard/customer/claim/{claim.id}/')
+               action_url=f'/dashboard/customer/claims/{claim.id}/')
         notify_role('staff', 'New Claim Submitted',
                     f'{request.user.get_full_name()} submitted claim {claim_number}.',
                     category='claim', action_url='/staff/claims/')
@@ -594,6 +601,32 @@ def customer_claim_detail(request, claim_id):
     documents = Document.objects.filter(claim=claim)
     payments = Payment.objects.filter(claim=claim)
 
+    if request.method == 'POST' and request.POST.get('action') == 'submit_bank_details':
+        if not claim.bank_details_requested:
+            messages.error(request, 'Bank details have not been requested for this claim.')
+            return redirect('customer_claim_detail', claim_id=claim.id)
+        if claim.status != 'approved':
+            messages.error(request, 'This claim is not awaiting bank details.')
+            return redirect('customer_claim_detail', claim_id=claim.id)
+        bank_name = request.POST.get('bank_name', '').strip()
+        account_holder = request.POST.get('account_holder', '').strip()
+        account_number = request.POST.get('account_number', '').strip()
+        branch_code = request.POST.get('branch_code', '').strip()
+        if not all([bank_name, account_holder, account_number, branch_code]):
+            messages.error(request, 'All bank detail fields are required.')
+            return redirect('customer_claim_detail', claim_id=claim.id)
+        claim.bank_name = bank_name
+        claim.account_holder = account_holder
+        claim.account_number = account_number
+        claim.branch_code = branch_code
+        claim.bank_details_submitted_at = timezone.now()
+        claim.save()
+        notify_role('staff', 'Bank Details Submitted',
+                    f'{request.user.get_full_name()} submitted bank details for claim {claim.claim_number}. Ready for payout.',
+                    category='claim', action_url=f'/staff/claims/{claim.id}/review/')
+        messages.success(request, 'Bank details submitted. Staff will process your payout shortly.')
+        return redirect('customer_claim_detail', claim_id=claim.id)
+
     context = {
         'claim': claim,
         'documents': documents,
@@ -614,6 +647,13 @@ def customer_payments(request):
         'pending_count': payments.filter(status='pending').count(),
     }
     return render(request, 'core/customer_payments.html', context)
+
+
+@role_required('policyholder')
+def customer_invoice(request, payment_id):
+    payment = get_object_or_404(Payment, id=payment_id, user=request.user)
+    context = {'payment': payment}
+    return render(request, 'core/customer_invoice.html', context)
 
 
 @role_required('policyholder')
@@ -789,32 +829,54 @@ def staff_claims(request):
 def staff_claim_review(request, claim_id):
     claim = get_object_or_404(Claim, id=claim_id)
 
-    if request.method == 'POST' and request.POST.get('action') == 'pay_out':
-        claim.status = 'paid'
-        claim.save()
-        payment_number = f"PAY-{datetime.now().year}-{Payment.objects.count() + 1001}"
-        Payment.objects.create(
-            payment_number=payment_number,
-            user=claim.user,
-            claim=claim,
-            policy=claim.policy,
-            amount=claim.amount_approved or claim.amount_claimed,
-            payment_method='payshap',
-            payment_type='payout',
-            status='completed',
-            due_date=timezone.now().date(),
-            paid_at=timezone.now(),
-            reference=f"Payout-{claim.claim_number}",
-        )
-        notify(claim.user, 'Claim Payout Received',
-               f'R {(claim.amount_approved or claim.amount_claimed):.2f} has been paid to you for claim {claim.claim_number}.',
-               category='payment', related_claim=claim)
-        log_activity(request.user, 'approve', f'Paid out R {(claim.amount_approved or claim.amount_claimed):.2f} for claim {claim.claim_number}')
-        messages.success(request, f'Claim {claim.claim_number} paid out successfully.')
-        return redirect('staff_claims')
-
     if request.method == 'POST':
         action = request.POST.get('action')
+
+        if action == 'pay_out':
+            if not claim.account_number:
+                messages.error(request, 'Policyholder has not submitted bank details yet. Request them first.')
+                return redirect('staff_claim_review', claim_id=claim.id)
+            claim.status = 'paid'
+            claim.resolved_at = timezone.now()
+            claim.save()
+            now = timezone.now()
+            seq = Payment.objects.count() + 1001
+            payment_number = f"PAY-{now.year}-{seq}"
+            invoice_number = f"INV-{now.year}-{seq}"
+            payout_amount = claim.amount_approved or claim.amount_claimed
+            payment = Payment.objects.create(
+                payment_number=payment_number,
+                user=claim.user,
+                claim=claim,
+                policy=claim.policy,
+                amount=payout_amount,
+                payment_method='payshap',
+                payment_type='payout',
+                status='completed',
+                due_date=now.date(),
+                paid_at=now,
+                reference=f"Payout-{claim.claim_number}",
+                invoice_number=invoice_number,
+                coverage_month=now.strftime('%Y-%m'),
+            )
+            notify(claim.user, 'Claim Payout Received',
+                   f'R {payout_amount:.2f} has been paid to your {claim.bank_name} account ({claim.account_number}) for claim {claim.claim_number}.',
+                   category='payment', related_claim=claim, related_payment=payment,
+                   action_url=f'/dashboard/customer/payments/invoice/{payment.id}/')
+            log_activity(request.user, 'approve', f'Paid out R {payout_amount:.2f} for claim {claim.claim_number} to {claim.account_holder}')
+            messages.success(request, f'Claim {claim.claim_number} paid out successfully. R {payout_amount:.2f} sent to {claim.account_holder}.')
+            return redirect('staff_claims')
+
+        if action == 'request_bank_details':
+            claim.bank_details_requested = True
+            claim.save()
+            notify(claim.user, 'Bank Details Required for Payout',
+                   f'Please submit your bank account details so we can pay out claim {claim.claim_number}. Go to your claim details to submit.',
+                   category='claim', related_claim=claim,
+                   action_url=f'/dashboard/customer/claims/{claim.id}/')
+            messages.success(request, f'Bank details requested from {claim.user.get_full_name()}. They will be notified to submit their details.')
+            return redirect('staff_claim_review', claim_id=claim.id)
+
         if action == 'approve':
             claim.status = 'approved'
             claim.amount_approved = claim.amount_claimed
@@ -823,33 +885,39 @@ def staff_claim_review(request, claim_id):
             notify(claim.user, 'Claim Approved',
                    f'Your claim {claim.claim_number} has been approved.',
                    category='claim', related_claim=claim,
-                   action_url=f'/dashboard/customer/claim/{claim.id}/')
-            messages.success(request, f'Claim {claim.claim_number} approved.')
+                   action_url=f'/dashboard/customer/claims/{claim.id}/')
+            messages.success(request, f'Claim {claim.claim_number} approved. You can now request bank details for payout.')
         elif action == 'reject':
+            reason = request.POST.get('reason', '').strip()
+            if not reason:
+                messages.error(request, 'Please provide a rejection reason.')
+                return redirect('staff_claim_review', claim_id=claim.id)
             claim.status = 'rejected'
-            claim.rejection_reason = request.POST.get('reason', '').strip()
+            claim.rejection_reason = reason
             claim.resolved_at = timezone.now()
             claim.save()
             notify(claim.user, 'Claim Rejected',
-                   f'Your claim {claim.claim_number} has been rejected.',
+                   f'Your claim {claim.claim_number} has been rejected. Reason: {reason}',
                    category='claim', related_claim=claim,
-                   action_url=f'/dashboard/customer/claim/{claim.id}/')
+                   action_url=f'/dashboard/customer/claims/{claim.id}/')
             messages.info(request, f'Claim {claim.claim_number} rejected.')
         elif action == 'investigate':
             investigator_id = request.POST.get('investigator_id')
+            if not investigator_id:
+                messages.error(request, 'Please choose an investigator to assign this case to.')
+                return redirect('staff_claim_review', claim_id=claim.id)
             claim.status = 'investigation'
-            if investigator_id:
-                claim.investigator_id = investigator_id
+            claim.investigator_id = investigator_id
             claim.save()
-            if investigator_id:
-                inv = User.objects.get(id=investigator_id)
-                notify(inv, 'Case Assigned to You',
-                       f'Claim {claim.claim_number} has been assigned to you for investigation.',
-                       category='fraud', action_url=f'/investigator/cases/{claim.id}/')
-            notify_role('investigator', 'Investigation Required',
-                        f'Claim {claim.claim_number} needs investigation.',
-                        category='fraud', action_url=f'/investigator/cases/{claim.id}/')
-            messages.info(request, f'Claim {claim.claim_number} sent for investigation.')
+            inv = User.objects.get(id=investigator_id)
+            notify(inv, 'Case Assigned to You',
+                   f'Claim {claim.claim_number} has been assigned to you for investigation. Please review and submit your findings.',
+                   category='fraud', action_url=f'/investigator/cases/{claim.id}/')
+            notify(claim.user, 'Claim Under Investigation',
+                   f'Your claim {claim.claim_number} is now under investigation. You will be notified of the outcome.',
+                   category='claim', related_claim=claim,
+                   action_url=f'/dashboard/customer/claims/{claim.id}/')
+            messages.info(request, f'Claim {claim.claim_number} assigned to {inv.get_full_name()} for investigation.')
         return redirect('staff_claims')
 
     investigators = User.objects.filter(profile__role='investigator', profile__status='active')
@@ -860,10 +928,28 @@ def staff_claim_review(request, claim_id):
 @role_required('staff')
 def staff_payments(request):
     payments = Payment.objects.all().order_by('-created_at')
+    now = timezone.now()
+    current_month = now.strftime('%Y-%m')
+
+    active_policies = Policy.objects.filter(status='active').select_related('user').order_by('user__first_name')
+    monthly_status = []
+    for p in active_policies:
+        paid = Payment.objects.filter(
+            policy=p, status='completed', payment_type='premium',
+            coverage_month=current_month
+        ).exists()
+        monthly_status.append({'policy': p, 'paid': paid, 'premium': p.premium_amount})
+
+    paid_count = sum(1 for m in monthly_status if m['paid'])
+
     context = {
         'payments': payments,
         'total_completed': payments.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0,
         'pending_count': payments.filter(status='pending').count(),
+        'monthly_status': monthly_status,
+        'current_month': now.strftime('%B %Y'),
+        'paid_this_month': paid_count,
+        'unpaid_this_month': len(monthly_status) - paid_count,
     }
     return render(request, 'core/staff_payments.html', context)
 
@@ -889,6 +975,7 @@ def staff_create_payment(request):
         claim = get_object_or_404(Claim, id=claim_id) if claim_id else None
 
         payment_number = f"PAY-{datetime.now().year}-{Payment.objects.count() + 1001}"
+        invoice_number = f"INV-{datetime.now().year}-{Payment.objects.count() + 1001}"
         Payment.objects.create(
             payment_number=payment_number,
             user=target_user,
@@ -900,6 +987,8 @@ def staff_create_payment(request):
             status=status,
             due_date=due_date,
             paid_at=timezone.now() if status == 'completed' else None,
+            invoice_number=invoice_number,
+            reference=f"Staff-{payment_number}",
         )
 
         notify(target_user, 'Payment Recorded',
@@ -989,14 +1078,51 @@ def investigator_case_detail(request, claim_id):
     claim = get_object_or_404(Claim, id=claim_id)
 
     if request.method == 'POST':
+        action = request.POST.get('action')
+        notes = request.POST.get('notes', '').strip()
+
+        if not notes:
+            messages.error(request, 'Please document your investigation findings before submitting.')
+            return redirect('investigator_case_detail', claim_id=claim.id)
+
         claim.investigator = request.user
-        claim.investigation_notes = request.POST.get('notes', '').strip()
-        claim.status = 'under_review'
-        claim.save()
-        notify_role('staff', 'Investigation Complete',
-                    f'Investigator submitted notes on claim {claim.claim_number}.',
-                    category='claim', action_url=f'/staff/claims/{claim.id}/review/')
-        messages.success(request, 'Investigation notes saved.')
+        claim.investigation_notes = notes
+
+        if action == 'approve':
+            claim.status = 'approved'
+            claim.amount_approved = claim.amount_claimed
+            claim.resolved_at = timezone.now()
+            claim.save()
+            notify_role('staff', 'Investigation Complete - Claim Approved',
+                        f'Investigator {request.user.get_full_name()} approved claim {claim.claim_number} after investigation. Ready for payout processing.',
+                        category='claim', action_url=f'/staff/claims/{claim.id}/review/')
+            notify(claim.user, 'Claim Approved After Investigation',
+                   f'Your claim {claim.claim_number} has been approved following investigation. Our staff will process your payout.',
+                   category='claim', related_claim=claim,
+                   action_url=f'/dashboard/customer/claims/{claim.id}/')
+            log_activity(request.user, 'approve', f'Investigation approved claim {claim.claim_number}')
+            messages.success(request, f'Claim {claim.claim_number} approved and sent to staff for payout.')
+        elif action == 'reject':
+            reason = request.POST.get('reason', '').strip()
+            if not reason:
+                messages.error(request, 'Please provide a rejection reason for the policyholder.')
+                return redirect('investigator_case_detail', claim_id=claim.id)
+            claim.status = 'rejected'
+            claim.rejection_reason = reason
+            claim.resolved_at = timezone.now()
+            claim.save()
+            notify(claim.user, 'Claim Rejected After Investigation',
+                   f'Your claim {claim.claim_number} has been rejected following investigation. Reason: {reason}',
+                   category='claim', related_claim=claim,
+                   action_url=f'/dashboard/customer/claims/{claim.id}/')
+            notify_role('staff', 'Investigation Complete - Claim Rejected',
+                        f'Investigator {request.user.get_full_name()} rejected claim {claim.claim_number}.',
+                        category='claim')
+            log_activity(request.user, 'reject', f'Investigation rejected claim {claim.claim_number}: {reason}')
+            messages.info(request, f'Claim {claim.claim_number} rejected. The policyholder has been notified.')
+        else:
+            claim.save()
+            messages.success(request, 'Investigation notes saved.')
         return redirect('investigator_cases')
 
     context = {'claim': claim}
@@ -1077,7 +1203,27 @@ def admin_claims(request):
 @role_required('administrator')
 def admin_payments(request):
     payments = Payment.objects.all().order_by('-created_at')
-    context = {'payments': payments}
+    now = timezone.now()
+    current_month = now.strftime('%Y-%m')
+
+    active_policies = Policy.objects.filter(status='active').select_related('user').order_by('user__first_name')
+    monthly_status = []
+    for p in active_policies:
+        paid = Payment.objects.filter(
+            policy=p, status='completed', payment_type='premium',
+            coverage_month=current_month
+        ).exists()
+        monthly_status.append({'policy': p, 'paid': paid, 'premium': p.premium_amount})
+
+    paid_count = sum(1 for m in monthly_status if m['paid'])
+
+    context = {
+        'payments': payments,
+        'monthly_status': monthly_status,
+        'current_month': now.strftime('%B %Y'),
+        'paid_this_month': paid_count,
+        'unpaid_this_month': len(monthly_status) - paid_count,
+    }
     return render(request, 'core/admin_payments.html', context)
 
 
