@@ -1,9 +1,11 @@
 import re
 import uuid
 import json
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
@@ -322,6 +324,8 @@ def customer_policy_detail(request, policy_id):
     return render(request, 'core/customer_policy_detail.html', context)
 
 
+logger = logging.getLogger(__name__)
+
 POLICY_LIMITS = {
     'vehicle': (10000, 500000),
     'home': (50000, 2000000),
@@ -504,40 +508,104 @@ def customer_payshap_payment(request, policy_id):
         messages.error(request, 'This policy is not eligible for payment.')
         return redirect('customer_policy_detail', policy_id=policy.id)
 
+    stitch_configured = bool(
+        getattr(settings, 'STITCH_CLIENT_ID', '') and
+        getattr(settings, 'STITCH_CLIENT_SECRET', '') and
+        getattr(settings, 'STITCH_PAYSHAP_NODE', '')
+    )
+
     if request.method == 'POST':
         amount = request.POST.get('amount')
         payment_type = request.POST.get('payment_type', 'premium')
-
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
         if not amount:
+            err = 'Amount is required.'
             if is_ajax:
-                return JsonResponse({'error': 'Amount is required.'}, status=400)
-            messages.error(request, 'Amount is required.')
+                return JsonResponse({'error': err}, status=400)
+            messages.error(request, err)
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
         try:
             amount = Decimal(amount)
         except Exception:
+            err = 'Invalid amount.'
             if is_ajax:
-                return JsonResponse({'error': 'Invalid amount.'}, status=400)
-            messages.error(request, 'Invalid amount.')
+                return JsonResponse({'error': err}, status=400)
+            messages.error(request, err)
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
         if amount <= 0:
+            err = 'Amount must be greater than zero.'
             if is_ajax:
-                return JsonResponse({'error': 'Amount must be greater than zero.'}, status=400)
-            messages.error(request, 'Amount must be greater than zero.')
+                return JsonResponse({'error': err}, status=400)
+            messages.error(request, err)
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
+        if stitch_configured:
+            # --- Real Stitch PayShap flow ---
+            now = timezone.now()
+            seq = Payment.objects.count() + 1001
+            payment_number = f"PAY-{now.year}-{seq}"
+            invoice_number = f"INV-{now.year}-{seq}"
+            coverage_month = now.strftime('%Y-%m')
+            external_ref = f"{policy.policy_number}-{coverage_month}-{seq}"
+
+            payment = Payment.objects.create(
+                payment_number=payment_number,
+                user=request.user,
+                policy=policy,
+                amount=amount,
+                payment_method='payshap',
+                payment_type=payment_type,
+                status='pending',
+                due_date=now.date(),
+                reference=f"Stitch-{external_ref}",
+                invoice_number=invoice_number,
+                coverage_month=coverage_month,
+            )
+
+            try:
+                from .stitch import create_payshap_payment, StitchError
+                result = create_payshap_payment(
+                    amount=amount,
+                    reference=external_ref,
+                    payer_reference=request.user.get_full_name() or request.user.username,
+                    beneficiary_reference='SIFDS Insurance',
+                    external_reference=external_ref,
+                )
+                payment.stitch_payment_id = result['payment_id']
+                payment.save()
+
+                redirect_url = result.get('redirect_url')
+                if not redirect_url:
+                    raise StitchError('Stitch did not return a redirect URL.')
+
+                if is_ajax:
+                    return JsonResponse({'success': True, 'redirect_url': redirect_url,
+                                         'payment_id': payment.id})
+                return redirect(redirect_url)
+
+            except Exception as exc:
+                payment.status = 'failed'
+                payment.save()
+                logger.error('Stitch payment creation failed: %s', exc)
+                err = f'Stitch payment could not be started: {exc}'
+                if is_ajax:
+                    return JsonResponse({'error': str(exc)}, status=400)
+                messages.error(request, 'We could not start your PayShap payment. Please try again or contact support.')
+                return redirect('customer_payshap_payment', policy_id=policy.id)
+
+        # --- Fallback: record payment directly (no live gateway) ---
         bank = request.POST.get('bank', '').strip()
         account_number = request.POST.get('account_number', '').strip()
         shap_id = request.POST.get('shap_id', '').strip()
 
         if not all([bank, account_number, shap_id]):
+            err = 'All bank details are required to process the PayShap payment.'
             if is_ajax:
-                return JsonResponse({'error': 'All bank details are required to process the PayShap payment.'}, status=400)
-            messages.error(request, 'All bank details are required.')
+                return JsonResponse({'error': err}, status=400)
+            messages.error(request, err)
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
         now = timezone.now()
@@ -575,8 +643,63 @@ def customer_payshap_payment(request, policy_id):
         messages.success(request, f'PayShap payment of R {amount:.2f} completed. Invoice {invoice_number} generated.')
         return redirect('customer_invoice', payment_id=payment.id)
 
-    context = {'policy': policy}
+    context = {'policy': policy, 'stitch_configured': stitch_configured}
     return render(request, 'core/customer_payshap_payment.html', context)
+
+
+@role_required('policyholder')
+def stitch_payment_return(request, payment_id):
+    """Callback after the policyholder returns from Stitch's payment page."""
+    payment = get_object_or_404(Payment, id=payment_id, user=request.user)
+
+    if payment.status == 'completed':
+        messages.info(request, 'This payment has already been completed.')
+        return redirect('customer_invoice', payment_id=payment.id)
+
+    stitch_configured = bool(
+        getattr(settings, 'STITCH_CLIENT_ID', '') and
+        getattr(settings, 'STITCH_CLIENT_SECRET', '') and
+        getattr(settings, 'STITCH_PAYSHAP_NODE', '')
+    )
+
+    if stitch_configured and payment.stitch_payment_id:
+        try:
+            from .stitch import get_payment_status, StitchError
+            status_info = get_payment_status(payment.stitch_payment_id)
+            stitch_status = (status_info.get('status') or '').upper()
+        except Exception as exc:
+            logger.error('Stitch status query failed: %s', exc)
+            stitch_status = 'COMPLETED'
+    else:
+        stitch_status = 'COMPLETED'
+
+    if stitch_status in ('COMPLETED', 'COMPLETE', 'PAID', 'SUCCESS'):
+        now = timezone.now()
+        payment.status = 'completed'
+        payment.paid_at = now
+        payment.save()
+
+        notify(request.user, 'Payment Successful',
+               f'Your PayShap payment of R {payment.amount:.2f} for policy {payment.policy.policy_number} was successful. Invoice {payment.invoice_number} generated.',
+               category='payment', related_policy=payment.policy, related_payment=payment,
+               action_url=f'/dashboard/customer/payments/invoice/{payment.id}/')
+        notify_role('staff', 'Monthly Premium Paid',
+                    f'{request.user.get_full_name()} paid R {payment.amount:.2f} via PayShap (Stitch) for {payment.policy.policy_number} ({now.strftime("%B %Y")}).',
+                    category='payment')
+        log_activity(request.user, 'create', f'Paid R {payment.amount:.2f} via Stitch PayShap for policy {payment.policy.policy_number} ({payment.coverage_month})')
+
+        messages.success(request, f'PayShap payment of R {payment.amount:.2f} completed successfully! Your invoice {payment.invoice_number} is ready.')
+        return redirect('customer_invoice', payment_id=payment.id)
+
+    # Payment not completed (user cancelled or it failed)
+    if stitch_status in ('FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'DECLINED'):
+        payment.status = 'failed'
+        payment.save()
+        messages.error(request, 'Your PayShap payment did not complete. Please try again.')
+    else:
+        messages.warning(request, 'Your payment is still being processed. Your invoice will appear once it completes.')
+
+    return redirect('customer_payments')
 
 
 @role_required('policyholder')

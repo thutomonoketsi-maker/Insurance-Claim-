@@ -30,69 +30,92 @@
       <div><p class="text-muted text-sm">Monthly premium</p><p style="font-weight:600; color:var(--primary); font-size:18px">R {{ policy.premium_amount|floatformat:2 }}</p></div>
     </div>
 
+    {% if stitch_configured %}
+    <!-- Real Stitch PayShap flow -->
     <div class="alert alert-info">
-      <strong>PayShap</strong> is a fast, secure South African payment method. Enter your payment details below to complete your monthly premium payment.
+      <strong>PayShap via Stitch</strong> &mdash; you will be redirected to Stitch's secure payment page to approve the PayShap transfer with your bank. Real money will be transferred.
     </div>
 
-    <!-- PayShap payment form -->
-    <div id="payshap-form-wrap">
-      <form id="payshap-form">
-        <div class="field">
-          <label>Amount to pay (R)</label>
-          <input type="number" id="payshap-amount" value="{{ policy.premium_amount|floatformat:2 }}" min="0.01" step="0.01" required>
-          <div class="hint">The default is your monthly premium.</div>
-        </div>
+    <form id="payshap-form">
+      <div class="field">
+        <label>Amount to pay (R)</label>
+        <input type="number" id="payshap-amount" value="{{ policy.premium_amount|floatformat:2 }}" min="0.01" step="0.01" required>
+        <div class="hint">The default is your monthly premium.</div>
+      </div>
 
-        <div class="field">
-          <label>Your bank</label>
-          <select id="payshap-bank" required>
-            <option value="">Select your bank...</option>
-            <option>ABSA</option>
-            <option>African Bank</option>
-            <option>Capitec Bank</option>
-            <option>Discovery Bank</option>
-            <option>FNB</option>
-            <option>Investec</option>
-            <option>Nedbank</option>
-            <option>Standard Bank</option>
-            <option>TymeBank</option>
-          </select>
-        </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center" id="payshap-submit">
+        <i class="fa-solid fa-bolt"></i> Pay R {{ policy.premium_amount|floatformat:2 }} via PayShap
+      </button>
+      <a href="{% url 'customer_policy_detail' policy.id %}" class="btn" style="width:100%; justify-content:center; margin-top:8px">Cancel</a>
+    </form>
 
-        <div class="field">
-          <label>Account number</label>
-          <input type="text" id="payshap-account" placeholder="Your bank account number" required>
-        </div>
-
-        <div class="field">
-          <label>Shap ID / cell number</label>
-          <input type="text" id="payshap-shapid" placeholder="e.g. 0821234567" required>
-          <div class="hint">Your PayShap identifier (usually your phone number) registered with your bank.</div>
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center" id="payshap-submit">
-          <i class="fa-solid fa-bolt"></i> Pay R {{ policy.premium_amount|floatformat:2 }} with PayShap
-        </button>
-        <a href="{% url 'customer_policy_detail' policy.id %}" class="btn" style="width:100%; justify-content:center; margin-top:8px">Cancel</a>
-      </form>
+    <div id="payshap-processing" style="display:none; text-align:center; padding:40px 0">
+      <div class="payshap-spinner" style="margin:0 auto 20px"></div>
+      <h3 style="font-size:16px; font-weight:600">Starting your PayShap payment...</h3>
+      <p class="text-muted text-sm">You will be redirected to Stitch to approve the transfer.</p>
     </div>
 
-    <!-- Processing state -->
+    {% else %}
+    <!-- Fallback: no live gateway configured -->
+    <div class="alert alert-warning">
+      <strong>Note:</strong> Live PayShap processing is not yet connected. To enable real money transfers, your Stitch API credentials need to be added.
+    </div>
+
+    <form id="payshap-form">
+      <div class="field">
+        <label>Amount to pay (R)</label>
+        <input type="number" id="payshap-amount" value="{{ policy.premium_amount|floatformat:2 }}" min="0.01" step="0.01" required>
+        <div class="hint">The default is your monthly premium.</div>
+      </div>
+
+      <div class="field">
+        <label>Your bank</label>
+        <select id="payshap-bank" required>
+          <option value="">Select your bank...</option>
+          <option>ABSA</option>
+          <option>African Bank</option>
+          <option>Capitec Bank</option>
+          <option>Discovery Bank</option>
+          <option>FNB</option>
+          <option>Investec</option>
+          <option>Nedbank</option>
+          <option>Standard Bank</option>
+          <option>TymeBank</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Account number</label>
+        <input type="text" id="payshap-account" placeholder="Your bank account number" required>
+      </div>
+
+      <div class="field">
+        <label>Shap ID / cell number</label>
+        <input type="text" id="payshap-shapid" placeholder="e.g. 0821234567" required>
+        <div class="hint">Your PayShap identifier (usually your phone number) registered with your bank.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center" id="payshap-submit">
+        <i class="fa-solid fa-bolt"></i> Pay R {{ policy.premium_amount|floatformat:2 }} with PayShap
+      </button>
+      <a href="{% url 'customer_policy_detail' policy.id %}" class="btn" style="width:100%; justify-content:center; margin-top:8px">Cancel</a>
+    </form>
+
     <div id="payshap-processing" style="display:none; text-align:center; padding:40px 0">
       <div class="payshap-spinner" style="margin:0 auto 20px"></div>
       <h3 style="font-size:16px; font-weight:600">Processing your PayShap payment...</h3>
       <p class="text-muted text-sm">Please wait while we confirm your payment with your bank.</p>
       <p class="text-muted text-sm" id="processing-status" style="margin-top:12px">Initiating payment...</p>
     </div>
+    {% endif %}
 
     <!-- Success state -->
     <div id="payshap-success" style="display:none; text-align:center; padding:40px 0">
       <div style="width:64px; height:64px; border-radius:50%; background:var(--success-light); margin:0 auto 20px; display:flex; align-items:center; justify-content:center">
         <i class="fa-solid fa-circle-check" style="font-size:32px; color:var(--success)"></i>
       </div>
-      <h3 style="font-size:18px; font-weight:600">Payment Successful!</h3>
-      <p class="text-muted text-sm" style="margin-top:8px">Your PayShap payment has been processed. Your invoice will be ready in a moment.</p>
-      <div id="success-invoice-link" style="margin-top:20px"></div>
+      <h3 style="font-size:18px; font-weight:600">Redirecting to Stitch...</h3>
+      <p class="text-muted text-sm" style="margin-top:8px">You are being redirected to complete your PayShap payment.</p>
     </div>
 
     <!-- Error state -->
@@ -115,73 +138,60 @@
 <script>
 (function() {
   const form = document.getElementById('payshap-form');
-  const formWrap = document.getElementById('payshap-form-wrap');
+  const formWrap = form;
   const processing = document.getElementById('payshap-processing');
   const success = document.getElementById('payshap-success');
   const errorDiv = document.getElementById('payshap-error');
-  const statusEl = document.getElementById('processing-status');
   const submitBtn = document.getElementById('payshap-submit');
-  const policyId = {{ policy.id }};
+  const stitchConfigured = {{ stitch_configured|yesno:"true,false" }};
 
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
     const amount = document.getElementById('payshap-amount').value;
-    const bank = document.getElementById('payshap-bank').value;
-    const account = document.getElementById('payshap-account').value;
-    const shapId = document.getElementById('payshap-shapid').value;
-
-    if (!amount || !bank || !account || !shapId) return;
+    if (!amount) return;
 
     submitBtn.disabled = true;
     formWrap.style.display = 'none';
     processing.style.display = 'block';
-    statusEl.textContent = 'Connecting to ' + bank + '...';
 
-    const steps = [
-      'Connecting to ' + bank + '...',
-      'Verifying account ' + account.slice(-4).padStart(4,'*') + '...',
-      'Initiating PayShap transfer...',
-      'Awaiting bank confirmation...',
-      'Payment confirmed!'
-    ];
+    const formData = new FormData();
+    formData.append('amount', amount);
+    formData.append('payment_type', 'premium');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-    let stepIdx = 0;
-    const interval = setInterval(() => {
-      stepIdx++;
-      if (stepIdx < steps.length) { statusEl.textContent = steps[stepIdx]; }
-    }, 800);
-
-    try {
-      // Submit to server to process real payment and create invoice
-      const formData = new FormData();
-      formData.append('amount', amount);
-      formData.append('payment_type', 'premium');
+    if (!stitchConfigured) {
+      const bank = document.getElementById('payshap-bank').value;
+      const account = document.getElementById('payshap-account').value;
+      const shapId = document.getElementById('payshap-shapid').value;
+      if (!bank || !account || !shapId) { resetPayment(); return; }
       formData.append('bank', bank);
       formData.append('account_number', account);
       formData.append('shap_id', shapId);
-      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    }
 
+    try {
       const res = await fetch(window.location.pathname, {
         method: 'POST',
         body: formData,
         headers: {'X-Requested-With': 'XMLHttpRequest'}
       });
 
-      clearInterval(interval);
+      const data = await res.json();
 
-      if (res.ok) {
-        const data = await res.json();
-        processing.style.display = 'none';
-        success.style.display = 'block';
-        document.getElementById('success-invoice-link').innerHTML =
-          '<a href="/dashboard/customer/payments/invoice/' + data.payment_id + '/" class="btn btn-primary" style="width:100%; justify-content:center"><i class="fa-solid fa-file-invoice"></i> View your invoice</a>' +
-          '<p class="text-muted text-sm" style="margin-top:12px">Your invoice is being generated and will be available shortly.</p>';
+      if (res.ok && data.success) {
+        if (data.redirect_url) {
+          // Stitch flow — redirect to Stitch payment page
+          processing.style.display = 'none';
+          success.style.display = 'block';
+          setTimeout(() => { window.location.href = data.redirect_url; }, 1200);
+        } else {
+          // Fallback flow — invoice ready
+          window.location.href = '/dashboard/customer/payments/invoice/' + data.payment_id + '/';
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Payment could not be processed.');
       }
     } catch(err) {
-      clearInterval(interval);
       processing.style.display = 'none';
       errorDiv.style.display = 'block';
       document.getElementById('error-message').textContent = err.message || 'Something went wrong. Please try again.';
@@ -191,6 +201,7 @@
   window.resetPayment = function() {
     errorDiv.style.display = 'none';
     formWrap.style.display = 'block';
+    processing.style.display = 'none';
     submitBtn.disabled = false;
   };
 })();

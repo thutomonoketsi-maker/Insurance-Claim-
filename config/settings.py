@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -128,3 +129,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'home'
+
+# Stitch PayShap payment gateway
+STITCH_CLIENT_ID = os.environ.get('STITCH_CLIENT_ID', '')
+STITCH_CLIENT_SECRET = os.environ.get('STITCH_CLIENT_SECRET', '')
+STITCH_PAYSHAP_NODE = os.environ.get('STITCH_PAYSHAP_NODE', '')
+STITCH_API_BASE = os.environ.get('STITCH_API_BASE', 'https://api.stitch.money')
