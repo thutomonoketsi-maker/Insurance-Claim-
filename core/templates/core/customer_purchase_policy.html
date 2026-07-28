@@ -18,77 +18,199 @@
 {% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:640px">
-  <div class="card-head"><h3>New policy application</h3></div>
+<div class="card" style="max-width:680px">
+  <div class="card-head"><h3>New Policy Application</h3></div>
   <div class="card-body">
-    <form method="post">
+
+    <!-- Step indicator -->
+    <div class="step-bar mb-24">
+      <div class="step-item active" data-step="1"><span class="step-num">1</span> <span class="step-label">Plan & Cover</span></div>
+      <div class="step-item" data-step="2"><span class="step-num">2</span> <span class="step-label">Details & Documents</span></div>
+      <div class="step-item" data-step="3"><span class="step-num">3</span> <span class="step-label">Confirm & Pay</span></div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="purchase-form">
       {% csrf_token %}
-      <div class="field">
-        <label>Insurance type</label>
-        <select name="policy_type" required>
-          <option value="">Select a type...</option>
-          <option value="vehicle">Vehicle Insurance</option>
-          <option value="home">Home Insurance</option>
-          <option value="life">Life Insurance</option>
-          <option value="health">Health Insurance</option>
-          <option value="business">Business Insurance</option>
-          <option value="travel">Travel Insurance</option>
-        </select>
+
+      <!-- Step 1: Plan selection -->
+      <div class="form-step" id="step1">
+        <div class="field">
+          <label>Choose your insurance type</label>
+          <select name="policy_type" id="policy_type" required>
+            <option value="">Select a type...</option>
+            <option value="vehicle">Vehicle Insurance</option>
+            <option value="home">Home Insurance</option>
+            <option value="life">Life Insurance</option>
+            <option value="health">Health Insurance</option>
+            <option value="business">Business Insurance</option>
+            <option value="travel">Travel Insurance</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Coverage amount (R)</label>
+          <input type="number" name="coverage_amount" id="coverage_amount" step="1000" required>
+          <div class="hint" id="limit_hint"></div>
+        </div>
+        <div class="field">
+          <label>Monthly premium (R) <span class="text-muted text-sm">(auto-calculated)</span></label>
+          <input type="text" id="premium_amount" readonly style="background:var(--bg); font-weight:600; font-size:16px; color:var(--primary)">
+          <div class="hint" id="premium_hint">Select a plan and enter a coverage amount to see your monthly premium.</div>
+        </div>
+        <div class="row" style="gap:12px; margin-top:16px">
+          <button type="button" class="btn btn-primary" onclick="goToStep(2)" id="step1-next">Next: Your details &rarr;</button>
+          <a href="{% url 'customer_policies' %}" class="btn">Cancel</a>
+        </div>
       </div>
-      <div class="field">
-        <label>Coverage amount (R)</label>
-        <input type="number" name="coverage_amount" id="coverage_amount" step="1000" required>
-        <div class="hint" id="limit_hint"></div>
+
+      <!-- Step 2: Details and documents -->
+      <div class="form-step" id="step2" style="display:none">
+        <div class="field">
+          <label>ID Number</label>
+          <input type="text" name="id_number" id="id_number" placeholder="e.g. 9001015000080" value="{{ request.user.profile.id_number }}" required>
+          <div class="hint">Your South African ID number for verification.</div>
+        </div>
+        <div class="field">
+          <label>Start date</label>
+          <input type="date" name="start_date" id="start_date" required>
+          <div class="hint">Your policy will run for 12 months from this date.</div>
+        </div>
+        <div class="field">
+          <label>Beneficiary name (optional)</label>
+          <input type="text" name="beneficiary_name" placeholder="Full name of beneficiary">
+        </div>
+        <div class="field">
+          <label>Supporting documents <span class="text-muted text-sm">(proof of ownership, ID copy, etc.)</span></label>
+          <div class="file-drop" id="file-drop">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size:28px; color:var(--primary); margin-bottom:8px"></i>
+            <p class="text-muted text-sm">Drag & drop files here, or <span style="color:var(--primary); text-decoration:underline">browse</span></p>
+            <p class="text-muted text-sm">JPG, PNG, or PDF &mdash; max 5MB each</p>
+            <input type="file" name="documents" id="documents" multiple accept=".jpg,.jpeg,.png,.pdf" style="display:none">
+          </div>
+          <div id="file-list" style="margin-top:8px"></div>
+        </div>
+        <div class="field">
+          <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer">
+            <input type="checkbox" name="terms" id="terms" required style="width:auto; margin-top:4px">
+            <span class="text-sm">I agree to the <a href="{% url 'about' %}" target="_blank" style="color:var(--primary)">Terms &amp; Conditions</a> and confirm the information provided is accurate.</span>
+          </label>
+        </div>
+        <div class="row" style="gap:12px; margin-top:16px">
+          <button type="button" class="btn" onclick="goToStep(1)">&larr; Back</button>
+          <button type="button" class="btn btn-primary" onclick="goToStep(3)" id="step2-next">Next: Review &rarr;</button>
+        </div>
       </div>
-      <div class="field">
-        <label>Monthly premium (R) <span class="text-muted text-sm">(auto-calculated)</span></label>
-        <input type="text" id="premium_amount" readonly style="background:var(--bg); font-weight:600">
+
+      <!-- Step 3: Confirm and pay -->
+      <div class="form-step" id="step3" style="display:none">
+        <div class="alert alert-info mb-16">
+          <strong>Review your application.</strong> Please confirm the details below before proceeding to payment.
+        </div>
+        <div class="form-grid">
+          <div><p class="text-muted text-sm">Insurance type</p><p id="confirm_type" style="font-weight:600"></p></div>
+          <div><p class="text-muted text-sm">Coverage amount</p><p id="confirm_coverage" style="font-weight:600"></p></div>
+          <div><p class="text-muted text-sm">Monthly premium</p><p id="confirm_premium" style="font-weight:600; color:var(--primary); font-size:18px"></p></div>
+          <div><p class="text-muted text-sm">Start date</p><p id="confirm_start" style="font-weight:600"></p></div>
+        </div>
+
+        <div class="card" style="background:var(--primary-light); border:none; margin:20px 0">
+          <div class="card-body" style="text-align:center; padding:24px">
+            <p class="text-muted text-sm">Amount due today</p>
+            <p style="font-size:32px; font-weight:700; color:var(--primary); margin:4px 0" id="confirm_amount_due">R 0.00</p>
+            <p class="text-muted text-sm">Your first monthly premium via PayShap</p>
+          </div>
+        </div>
+
+        <div class="alert alert-success" style="margin-bottom:16px">
+          <i class="fa-solid fa-circle-info"></i> Your policy will be created as <strong>pending</strong> until staff approves it. Your payment will be recorded immediately.
+        </div>
+
+        <div class="row" style="gap:12px">
+          <button type="button" class="btn" onclick="goToStep(2)">&larr; Back</button>
+          <button type="submit" class="btn btn-primary" style="flex:1; justify-content:center">
+            <i class="fa-solid fa-bolt"></i> Create policy &amp; proceed to PayShap payment
+          </button>
+        </div>
       </div>
-      <div class="field">
-        <label>Start date</label>
-        <input type="date" name="start_date" required>
-        <div class="hint">Your policy will run for 12 months from this date.</div>
-      </div>
-      <div class="field">
-        <label>Beneficiary name (optional)</label>
-        <input type="text" name="beneficiary_name" placeholder="Full name of beneficiary">
-      </div>
-      <button type="submit" class="btn btn-primary">Create policy & pay</button>
-      <a href="{% url 'customer_policies' %}" class="btn">Cancel</a>
+
     </form>
   </div>
 </div>
 
+<style>
+.step-bar { display:flex; gap:8px; }
+.step-item { display:flex; align-items:center; gap:8px; flex:1; padding:10px 12px; border-radius:8px; background:var(--bg); transition:all 0.3s; }
+.step-item.active { background:var(--primary-light); }
+.step-num { width:26px; height:26px; border-radius:50%; background:var(--border); color:var(--text-muted); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; transition:all 0.3s; }
+.step-item.active .step-num { background:var(--primary); color:#fff; }
+.step-label { font-size:13px; font-weight:500; color:var(--text-muted); }
+.step-item.active .step-label { color:var(--primary-dark); }
+.file-drop { border:2px dashed var(--border); border-radius:10px; padding:28px; text-align:center; cursor:pointer; transition:all 0.2s; }
+.file-drop:hover, .file-drop.dragover { border-color:var(--primary); background:var(--primary-light); }
+.file-chip { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg); border-radius:8px; margin-top:6px; font-size:13px; }
+.file-chip .remove { color:var(--danger); cursor:pointer; font-weight:700; }
+@media(max-width:640px){ .step-label{ display:none; } .step-bar{ gap:4px; } }
+</style>
+
 <script>
+const limits = {{ policy_limits_json|safe }};
+const typeLabels = {vehicle:'Vehicle Insurance',home:'Home Insurance',life:'Life Insurance',health:'Health Insurance',business:'Business Insurance',travel:'Travel Insurance'};
+
+const typeSelect = document.getElementById('policy_type');
+const covInput = document.getElementById('coverage_amount');
+const premInput = document.getElementById('premium_amount');
+const premHint = document.getElementById('premium_hint');
+const hint = document.getElementById('limit_hint');
+
 function updatePremium() {
     const type = typeSelect.value;
-
-    if (!limits[type]) {
-        covInput.removeAttribute("min");
-        covInput.removeAttribute("max");
-        premInput.value = "";
-        hint.textContent = "";
-        return;
-    }
-
+    if (!limits[type]) { premInput.value=''; hint.textContent=''; premHint.textContent='Select a plan and enter a coverage amount to see your monthly premium.'; return; }
     const [min, max, rate] = limits[type];
-
-    covInput.min = min;
-    covInput.max = max;
-
+    covInput.min = min; covInput.max = max;
     const cov = parseFloat(covInput.value) || 0;
+    hint.textContent = 'Cover range: R ' + min.toLocaleString() + ' - R ' + max.toLocaleString();
+    if (cov && (cov < min || cov > max)) { premInput.value = 'Invalid coverage'; premHint.textContent='Coverage is outside the allowed range.'; return; }
+    if (cov) { const prem = (cov * rate / 12).toFixed(2); premInput.value = 'R ' + prem; premHint.textContent = 'Your monthly premium is ' + (rate*100).toFixed(1) + '% of your cover amount, divided by 12 months.'; }
+    else { premInput.value=''; premHint.textContent='Enter a coverage amount to see your monthly premium.'; }
+}
+typeSelect.addEventListener('change', updatePremium);
+covInput.addEventListener('input', updatePremium);
 
-    hint.textContent = `Cover range: R ${min.toLocaleString()} - R ${max.toLocaleString()}`;
-
-    if (cov && (cov < min || cov > max)) {
-        premInput.value = "Invalid coverage";
-        return;
+function goToStep(n) {
+    if (n === 2) {
+        if (!typeSelect.value || !covInput.value || premInput.value === 'Invalid coverage') { alert('Please select a plan and enter a valid coverage amount first.'); return; }
     }
+    if (n === 3) {
+        if (!document.getElementById('id_number').value.trim()) { alert('Please enter your ID number.'); return; }
+        if (!document.getElementById('start_date').value) { alert('Please select a start date.'); return; }
+        if (!document.getElementById('terms').checked) { alert('Please accept the Terms & Conditions.'); return; }
+    }
+    for (let i=1; i<=3; i++) { document.getElementById('step'+i).style.display = i===n ? '' : 'none'; document.querySelector('[data-step="'+i+'"]').classList.toggle('active', i<=n); }
+    if (n === 3) {
+        document.getElementById('confirm_type').textContent = typeLabels[typeSelect.value] || typeSelect.value;
+        document.getElementById('confirm_coverage').textContent = 'R ' + parseFloat(covInput.value).toLocaleString();
+        document.getElementById('confirm_premium').textContent = premInput.value;
+        document.getElementById('confirm_amount_due').textContent = premInput.value;
+        document.getElementById('confirm_start').textContent = document.getElementById('start_date').value;
+    }
+    window.scrollTo({top:0, behavior:'smooth'});
+}
 
-    if (cov) {
-        premInput.value = `R ${(cov * rate / 12).toFixed(2)}`;
-    } else {
-        premInput.value = "";
+// File upload
+const fileDrop = document.getElementById('file-drop');
+const fileInput = document.getElementById('documents');
+const fileList = document.getElementById('file-list');
+fileDrop.addEventListener('click', () => fileInput.click());
+fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragover'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragover'));
+fileDrop.addEventListener('drop', e => { e.preventDefault(); fileDrop.classList.remove('dragover'); fileInput.files = e.dataTransfer.files; showFiles(); });
+fileInput.addEventListener('change', showFiles);
+function showFiles() {
+    fileList.innerHTML = '';
+    for (const f of fileInput.files) {
+        const chip = document.createElement('div'); chip.className = 'file-chip';
+        const size = f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+'MB' : (f.size/1024).toFixed(0)+'KB';
+        chip.innerHTML = '<i class="fa-regular fa-file" style="color:var(--primary)"></i> ' + f.name + ' <span class="text-muted">('+size+')</span>';
+        fileList.appendChild(chip);
     }
 }
 </script>

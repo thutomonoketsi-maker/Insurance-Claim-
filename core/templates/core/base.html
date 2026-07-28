@@ -52,18 +52,24 @@
     </div>
   </div>
   {% if request.user.profile.role == 'policyholder' %}
-  <div id="copilot-toggle" style="position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,0.2); z-index:9999; font-size:22px;">
-    <i class="fa-solid fa-robot"></i>
-  </div>
-  <div id="copilot-panel" style="display:none; position:fixed; bottom:90px; right:24px; width:360px; max-width:calc(100vw - 48px); background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.15); z-index:9999; flex-direction:column; overflow:hidden;">
-    <div style="background:var(--primary); color:#fff; padding:14px 18px; font-weight:600; display:flex; align-items:center; gap:10px;">
-      <i class="fa-solid fa-robot"></i> SIFDS Copilot
-      <span id="copilot-close" style="margin-left:auto; cursor:pointer; font-size:18px;">&times;</span>
+  <button id="copilot-toggle" aria-label="Open chat assistant" style="position:fixed; bottom:20px; right:20px; width:54px; height:54px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(232,115,12,0.35); z-index:9999; font-size:20px; border:none; transition:transform 0.2s, box-shadow 0.2s;">
+    <i class="fa-solid fa-comments"></i>
+    <span id="copilot-badge" style="position:absolute; top:-2px; right:-2px; width:18px; height:18px; background:var(--danger); border-radius:50%; font-size:10px; display:none; align-items:center; justify-content:center; font-weight:700; border:2px solid #fff;">1</span>
+  </button>
+  <div id="copilot-panel" style="display:none; position:fixed; bottom:84px; right:20px; width:370px; max-width:calc(100vw - 32px); max-height:520px; background:#fff; border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,0.18); z-index:9999; flex-direction:column; overflow:hidden; border:1px solid var(--border);">
+    <div style="background:linear-gradient(135deg, var(--primary), var(--accent)); color:#fff; padding:14px 18px; font-weight:600; display:flex; align-items:center; gap:10px; flex-shrink:0;">
+      <div style="width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:18px;"><i class="fa-solid fa-robot"></i></div>
+      <div>
+        <div>SIFDS Copilot</div>
+        <div style="font-size:11px; font-weight:400; opacity:0.85;">Always here to help</div>
+      </div>
+      <span id="copilot-close" style="margin-left:auto; cursor:pointer; font-size:20px; opacity:0.8;">&times;</span>
     </div>
-    <div id="copilot-messages" style="flex:1; overflow-y:auto; padding:16px; max-height:320px; display:flex; flex-direction:column; gap:10px;"></div>
-    <div style="display:flex; gap:8px; padding:12px; border-top:1px solid var(--border);">
-      <input type="text" id="copilot-input" placeholder="Ask me anything..." style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-      <button id="copilot-send" class="btn btn-primary btn-sm" style="padding:10px 14px;"><i class="fa-solid fa-paper-plane"></i></button>
+    <div id="copilot-messages" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;"></div>
+    <div id="copilot-quick" style="padding:0 12px 8px; display:flex; gap:6px; flex-wrap:wrap; flex-shrink:0;"></div>
+    <div style="display:flex; gap:8px; padding:12px; border-top:1px solid var(--border); flex-shrink:0;">
+      <input type="text" id="copilot-input" placeholder="Ask me anything..." style="flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:14px; outline:none;">
+      <button id="copilot-send" class="btn btn-primary btn-sm" style="padding:10px 14px; border:none;"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
   <script>
@@ -74,24 +80,70 @@
     const messagesEl = document.getElementById('copilot-messages');
     const input = document.getElementById('copilot-input');
     const sendBtn = document.getElementById('copilot-send');
+    const quickEl = document.getElementById('copilot-quick');
+    const badge = document.getElementById('copilot-badge');
+    let opened = false;
 
-    toggle.addEventListener('click', () => {
-      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-      if (messagesEl.children.length === 0) {
-        addMessage('bot', "Hi! I am your SIFDS insurance assistant. Ask me about your policies, claims, payments, or coverage limits.");
-      }
-    });
-    closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
+    const quickReplies = [
+      'How do I pay my premium?',
+      'How do I submit a claim?',
+      'What policies are available?',
+      'How long does a claim take?'
+    ];
+
+    function renderQuickReplies() {
+      quickEl.innerHTML = '';
+      quickReplies.forEach(q => {
+        const btn = document.createElement('button');
+        btn.textContent = q;
+        btn.style.cssText = 'padding:6px 12px; border:1px solid var(--primary); background:var(--primary-light); color:var(--primary-dark); border-radius:16px; font-size:12px; cursor:pointer; white-space:nowrap; transition:all 0.2s;';
+        btn.onmouseenter = () => { btn.style.background = 'var(--primary)'; btn.style.color = '#fff'; };
+        btn.onmouseleave = () => { btn.style.background = 'var(--primary-light)'; btn.style.color = 'var(--primary-dark)'; };
+        btn.onclick = () => { input.value = q; send(); quickEl.innerHTML = ''; };
+        quickEl.appendChild(btn);
+      });
+    }
+
+    function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
     function addMessage(sender, text) {
       const div = document.createElement('div');
       div.style.cssText = sender === 'user'
-        ? 'align-self:flex-end; background:var(--primary); color:#fff; padding:10px 14px; border-radius:12px 12px 2px 12px; max-width:80%; font-size:14px; white-space:pre-wrap;'
-        : 'align-self:flex-start; background:var(--bg); padding:10px 14px; border-radius:12px 12px 12px 2px; max-width:80%; font-size:14px; white-space:pre-wrap;';
+        ? 'align-self:flex-end; background:var(--primary); color:#fff; padding:10px 14px; border-radius:14px 14px 4px 14px; max-width:85%; font-size:14px; white-space:pre-wrap; word-break:break-word; animation:msgIn 0.2s ease;'
+        : 'align-self:flex-start; background:var(--bg); padding:10px 14px; border-radius:14px 14px 14px 4px; max-width:85%; font-size:14px; white-space:pre-wrap; word-break:break-word; animation:msgIn 0.2s ease;';
       div.textContent = text;
       messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      scrollToBottom();
     }
+
+    function showTyping() {
+      const div = document.createElement('div');
+      div.id = 'typing-indicator';
+      div.style.cssText = 'align-self:flex-start; background:var(--bg); padding:12px 16px; border-radius:14px; display:flex; gap:4px;';
+      div.innerHTML = '<span style="width:7px;height:7px;background:var(--primary);border-radius:50%;animation:typing 1s infinite;"></span><span style="width:7px;height:7px;background:var(--primary);border-radius:50%;animation:typing 1s 0.2s infinite;"></span><span style="width:7px;height:7px;background:var(--primary);border-radius:50%;animation:typing 1s 0.4s infinite;"></span>';
+      messagesEl.appendChild(div);
+      scrollToBottom();
+    }
+
+    function hideTyping() { const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
+
+    function openPanel() {
+      panel.style.display = 'flex';
+      panel.style.animation = 'panelIn 0.25s ease';
+      badge.style.display = 'none';
+      if (!opened) {
+        opened = true;
+        addMessage('bot', "Hi! I am your SIFDS insurance assistant. I can help with policies, claims, payments, and more. What can I help you with today?");
+        renderQuickReplies();
+      }
+      setTimeout(() => input.focus(), 300);
+    }
+
+    toggle.addEventListener('click', () => {
+      if (panel.style.display === 'none' || !panel.style.display) openPanel();
+      else panel.style.display = 'none';
+    });
+    closeBtn.addEventListener('click', () => { panel.style.display = 'none'; });
 
     async function send() {
       const text = input.value.trim();
@@ -99,6 +151,8 @@
       addMessage('user', text);
       input.value = '';
       sendBtn.disabled = true;
+      quickEl.innerHTML = '';
+      showTyping();
       try {
         const res = await fetch('{% url "copilot_chat" %}', {
           method: 'POST',
@@ -106,15 +160,27 @@
           body: JSON.stringify({message: text})
         });
         const data = await res.json();
+        hideTyping();
         addMessage('bot', data.reply);
+        renderQuickReplies();
       } catch(e) {
+        hideTyping();
         addMessage('bot', 'Sorry, something went wrong. Please try again.');
       }
       sendBtn.disabled = false;
+      input.focus();
     }
 
     sendBtn.addEventListener('click', send);
     input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = '@keyframes msgIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}@keyframes panelIn{from{opacity:0;transform:translateY(20px) scale(0.95);}to{opacity:1;transform:translateY(0) scale(1);}}@keyframes typing{0%,60%,100%{opacity:0.3;transform:translateY(0);}30%{opacity:1;transform:translateY(-4px);}}';
+    document.head.appendChild(style);
+
+    // Show notification badge after delay
+    setTimeout(() => { if (!opened) badge.style.display = 'flex'; }, 5000);
   })();
   </script>
   {% endif %}

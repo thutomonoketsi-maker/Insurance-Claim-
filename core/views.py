@@ -352,6 +352,7 @@ def customer_purchase_policy(request):
         policy_type = request.POST.get('policy_type')
         coverage_amount = request.POST.get('coverage_amount')
         start_date = request.POST.get('start_date')
+        id_number = request.POST.get('id_number', '').strip()
         beneficiary_name = request.POST.get('beneficiary_name', '').strip()
 
         if not all([policy_type, coverage_amount, start_date]):
@@ -362,6 +363,14 @@ def customer_purchase_policy(request):
         coverage = Decimal(coverage_amount)
         if coverage < min_cov or coverage > max_cov:
             messages.error(request, f'Coverage for this plan must be between R {min_cov:,.0f} and R {max_cov:,.0f}.')
+            return redirect('customer_purchase_policy')
+
+        if not id_number:
+            messages.error(request, 'Your ID number is required.')
+            return redirect('customer_purchase_policy')
+
+        if not request.POST.get('terms'):
+            messages.error(request, 'You must accept the Terms & Conditions.')
             return redirect('customer_purchase_policy')
 
         premium_amount = calculate_premium(policy_type, coverage)
@@ -383,18 +392,52 @@ def customer_purchase_policy(request):
             beneficiary_name=beneficiary_name,
         )
 
-        notify(request.user, 'Policy Submitted',
-               f'Your {policy.get_policy_type_display()} policy {policy.policy_number} is pending review.',
+        profile = request.user.profile
+        if id_number and not profile.id_number:
+            profile.id_number = id_number
+            profile.save()
+
+        files = request.FILES.getlist('documents')
+        doc_type_map = {
+            'vehicle': 'other',
+            'home': 'other',
+            'life': 'id_document',
+            'health': 'id_document',
+            'business': 'other',
+            'travel': 'other',
+        }
+        for f in files:
+            if f.size > 5 * 1024 * 1024:
+                continue
+            allowed = ['image/jpeg', 'image/png', 'application/pdf']
+            if f.content_type not in allowed:
+                continue
+            doc_number = f"DOC-{datetime.now().year}-{Document.objects.count() + 1001}"
+            Document.objects.create(
+                document_number=doc_number,
+                user=request.user,
+                policy=policy,
+                document_type=doc_type_map.get(policy_type, 'other'),
+                document_name=f.name,
+                document_file=f,
+            )
+
+        notify(request.user, 'Policy Created',
+               f'Your {policy.get_policy_type_display()} policy {policy.policy_number} has been created. Monthly premium: R {premium_amount:.2f}. Proceed to payment.',
                category='policy', related_policy=policy,
                action_url=f'/dashboard/customer/policies/{policy.id}/')
         notify_role('staff', 'New Policy Application',
                     f'{request.user.get_full_name()} applied for a {policy.get_policy_type_display()} policy.',
                     category='policy', action_url='/staff/applications/')
 
-        messages.success(request, f'Policy {policy.policy_number} created. Your monthly premium is R {premium_amount:.2f}.')
+        messages.success(request, f'Policy {policy.policy_number} created. Amount due: R {premium_amount:.2f}. Please proceed to payment.')
         return redirect('customer_payshap_payment', policy_id=policy.id)
 
-    context = {'policy_limits': POLICY_LIMITS}
+    limits_json = json.dumps({
+        k: [str(v[0]), str(v[1]), str(PREMIUM_RATES.get(k, Decimal('0.010')))]
+        for k, v in POLICY_LIMITS.items()
+    })
+    context = {'policy_limits': POLICY_LIMITS, 'policy_limits_json': limits_json}
     return render(request, 'core/customer_purchase_policy.html', context)
 
 
@@ -465,13 +508,36 @@ def customer_payshap_payment(request, policy_id):
         amount = request.POST.get('amount')
         payment_type = request.POST.get('payment_type', 'premium')
 
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
         if not amount:
+            if is_ajax:
+                return JsonResponse({'error': 'Amount is required.'}, status=400)
             messages.error(request, 'Amount is required.')
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
-        amount = Decimal(amount)
+        try:
+            amount = Decimal(amount)
+        except Exception:
+            if is_ajax:
+                return JsonResponse({'error': 'Invalid amount.'}, status=400)
+            messages.error(request, 'Invalid amount.')
+            return redirect('customer_payshap_payment', policy_id=policy.id)
+
         if amount <= 0:
+            if is_ajax:
+                return JsonResponse({'error': 'Amount must be greater than zero.'}, status=400)
             messages.error(request, 'Amount must be greater than zero.')
+            return redirect('customer_payshap_payment', policy_id=policy.id)
+
+        bank = request.POST.get('bank', '').strip()
+        account_number = request.POST.get('account_number', '').strip()
+        shap_id = request.POST.get('shap_id', '').strip()
+
+        if not all([bank, account_number, shap_id]):
+            if is_ajax:
+                return JsonResponse({'error': 'All bank details are required to process the PayShap payment.'}, status=400)
+            messages.error(request, 'All bank details are required.')
             return redirect('customer_payshap_payment', policy_id=policy.id)
 
         now = timezone.now()
@@ -489,7 +555,7 @@ def customer_payshap_payment(request, policy_id):
             status='completed',
             due_date=now.date(),
             paid_at=now,
-            reference=f"PayShap-{payment_number}",
+            reference=f"PayShap-{shap_id}-{payment_number}",
             invoice_number=invoice_number,
             coverage_month=coverage_month,
         )
@@ -502,6 +568,9 @@ def customer_payshap_payment(request, policy_id):
                     f'{request.user.get_full_name()} paid R {amount:.2f} via PayShap for {policy.policy_number} ({now.strftime("%B %Y")}).',
                     category='payment')
         log_activity(request.user, 'create', f'Paid R {amount:.2f} via PayShap for policy {policy.policy_number} ({coverage_month})')
+
+        if is_ajax:
+            return JsonResponse({'success': True, 'payment_id': payment.id, 'invoice_number': invoice_number})
 
         messages.success(request, f'PayShap payment of R {amount:.2f} completed. Invoice {invoice_number} generated.')
         return redirect('customer_invoice', payment_id=payment.id)

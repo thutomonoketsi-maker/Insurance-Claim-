@@ -20,39 +20,179 @@
 {% block content %}
 <div class="card" style="max-width:520px">
   <div class="card-head">
-    <h3><i class="fa-solid fa-bolt" style="color:var(--accent)"></i> PayShap Payment</h3>
+    <h3><i class="fa-solid fa-bolt" style="color:var(--primary)"></i> PayShap Payment</h3>
   </div>
   <div class="card-body">
     <div class="form-grid mb-16">
       <div><p class="text-muted text-sm">Policy</p><p>{{ policy.policy_number }}</p></div>
       <div><p class="text-muted text-sm">Type</p><p>{{ policy.type_display }}</p></div>
       <div><p class="text-muted text-sm">Coverage</p><p>R {{ policy.coverage_amount|floatformat:2 }}</p></div>
-      <div><p class="text-muted text-sm">Monthly premium</p><p>R {{ policy.premium_amount|floatformat:2 }}</p></div>
+      <div><p class="text-muted text-sm">Monthly premium</p><p style="font-weight:600; color:var(--primary); font-size:18px">R {{ policy.premium_amount|floatformat:2 }}</p></div>
     </div>
 
     <div class="alert alert-info">
-      <strong>PayShap</strong> is a fast, secure South African payment method. Your payment is processed instantly and your policy will be updated immediately.
+      <strong>PayShap</strong> is a fast, secure South African payment method. Enter your payment details below to complete your monthly premium payment.
     </div>
 
-    <form method="post">
-      {% csrf_token %}
-      <div class="field">
-        <label>Payment type</label>
-        <select name="payment_type">
-          <option value="premium">Monthly Premium</option>
-          <option value="payout">Other</option>
-        </select>
+    <!-- PayShap payment form -->
+    <div id="payshap-form-wrap">
+      <form id="payshap-form">
+        <div class="field">
+          <label>Amount to pay (R)</label>
+          <input type="number" id="payshap-amount" value="{{ policy.premium_amount|floatformat:2 }}" min="0.01" step="0.01" required>
+          <div class="hint">The default is your monthly premium.</div>
+        </div>
+
+        <div class="field">
+          <label>Your bank</label>
+          <select id="payshap-bank" required>
+            <option value="">Select your bank...</option>
+            <option>ABSA</option>
+            <option>African Bank</option>
+            <option>Capitec Bank</option>
+            <option>Discovery Bank</option>
+            <option>FNB</option>
+            <option>Investec</option>
+            <option>Nedbank</option>
+            <option>Standard Bank</option>
+            <option>TymeBank</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Account number</label>
+          <input type="text" id="payshap-account" placeholder="Your bank account number" required>
+        </div>
+
+        <div class="field">
+          <label>Shap ID / cell number</label>
+          <input type="text" id="payshap-shapid" placeholder="e.g. 0821234567" required>
+          <div class="hint">Your PayShap identifier (usually your phone number) registered with your bank.</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center" id="payshap-submit">
+          <i class="fa-solid fa-bolt"></i> Pay R {{ policy.premium_amount|floatformat:2 }} with PayShap
+        </button>
+        <a href="{% url 'customer_policy_detail' policy.id %}" class="btn" style="width:100%; justify-content:center; margin-top:8px">Cancel</a>
+      </form>
+    </div>
+
+    <!-- Processing state -->
+    <div id="payshap-processing" style="display:none; text-align:center; padding:40px 0">
+      <div class="payshap-spinner" style="margin:0 auto 20px"></div>
+      <h3 style="font-size:16px; font-weight:600">Processing your PayShap payment...</h3>
+      <p class="text-muted text-sm">Please wait while we confirm your payment with your bank.</p>
+      <p class="text-muted text-sm" id="processing-status" style="margin-top:12px">Initiating payment...</p>
+    </div>
+
+    <!-- Success state -->
+    <div id="payshap-success" style="display:none; text-align:center; padding:40px 0">
+      <div style="width:64px; height:64px; border-radius:50%; background:var(--success-light); margin:0 auto 20px; display:flex; align-items:center; justify-content:center">
+        <i class="fa-solid fa-circle-check" style="font-size:32px; color:var(--success)"></i>
       </div>
-      <div class="field">
-        <label>Amount (R)</label>
-        <input type="number" name="amount" value="{{ policy.premium_amount|floatformat:2 }}" min="0.01" step="0.01" required>
-        <div class="hint">The default is your monthly premium. You can adjust if needed.</div>
+      <h3 style="font-size:18px; font-weight:600">Payment Successful!</h3>
+      <p class="text-muted text-sm" style="margin-top:8px">Your PayShap payment has been processed. Your invoice will be ready in a moment.</p>
+      <div id="success-invoice-link" style="margin-top:20px"></div>
+    </div>
+
+    <!-- Error state -->
+    <div id="payshap-error" style="display:none; text-align:center; padding:40px 0">
+      <div style="width:64px; height:64px; border-radius:50%; background:var(--danger-light); margin:0 auto 20px; display:flex; align-items:center; justify-content:center">
+        <i class="fa-solid fa-circle-xmark" style="font-size:32px; color:var(--danger)"></i>
       </div>
-      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center">
-        <i class="fa-solid fa-bolt"></i> Pay R {{ policy.premium_amount|floatformat:2 }} with PayShap
-      </button>
-      <a href="{% url 'customer_policy_detail' policy.id %}" class="btn" style="width:100%; justify-content:center; margin-top:8px">Cancel</a>
-    </form>
+      <h3 style="font-size:18px; font-weight:600">Payment Failed</h3>
+      <p class="text-muted text-sm" id="error-message" style="margin-top:8px"></p>
+      <button class="btn btn-primary" style="margin-top:20px" onclick="resetPayment()">Try Again</button>
+    </div>
   </div>
 </div>
+
+<style>
+.payshap-spinner { width:40px; height:40px; border:4px solid var(--primary-light); border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+
+<script>
+(function() {
+  const form = document.getElementById('payshap-form');
+  const formWrap = document.getElementById('payshap-form-wrap');
+  const processing = document.getElementById('payshap-processing');
+  const success = document.getElementById('payshap-success');
+  const errorDiv = document.getElementById('payshap-error');
+  const statusEl = document.getElementById('processing-status');
+  const submitBtn = document.getElementById('payshap-submit');
+  const policyId = {{ policy.id }};
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const amount = document.getElementById('payshap-amount').value;
+    const bank = document.getElementById('payshap-bank').value;
+    const account = document.getElementById('payshap-account').value;
+    const shapId = document.getElementById('payshap-shapid').value;
+
+    if (!amount || !bank || !account || !shapId) return;
+
+    submitBtn.disabled = true;
+    formWrap.style.display = 'none';
+    processing.style.display = 'block';
+    statusEl.textContent = 'Connecting to ' + bank + '...';
+
+    const steps = [
+      'Connecting to ' + bank + '...',
+      'Verifying account ' + account.slice(-4).padStart(4,'*') + '...',
+      'Initiating PayShap transfer...',
+      'Awaiting bank confirmation...',
+      'Payment confirmed!'
+    ];
+
+    let stepIdx = 0;
+    const interval = setInterval(() => {
+      stepIdx++;
+      if (stepIdx < steps.length) { statusEl.textContent = steps[stepIdx]; }
+    }, 800);
+
+    try {
+      // Submit to server to process real payment and create invoice
+      const formData = new FormData();
+      formData.append('amount', amount);
+      formData.append('payment_type', 'premium');
+      formData.append('bank', bank);
+      formData.append('account_number', account);
+      formData.append('shap_id', shapId);
+      formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+      const res = await fetch(window.location.pathname, {
+        method: 'POST',
+        body: formData,
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+      });
+
+      clearInterval(interval);
+
+      if (res.ok) {
+        const data = await res.json();
+        processing.style.display = 'none';
+        success.style.display = 'block';
+        document.getElementById('success-invoice-link').innerHTML =
+          '<a href="/dashboard/customer/payments/invoice/' + data.payment_id + '/" class="btn btn-primary" style="width:100%; justify-content:center"><i class="fa-solid fa-file-invoice"></i> View your invoice</a>' +
+          '<p class="text-muted text-sm" style="margin-top:12px">Your invoice is being generated and will be available shortly.</p>';
+      } else {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Payment could not be processed.');
+      }
+    } catch(err) {
+      clearInterval(interval);
+      processing.style.display = 'none';
+      errorDiv.style.display = 'block';
+      document.getElementById('error-message').textContent = err.message || 'Something went wrong. Please try again.';
+    }
+  });
+
+  window.resetPayment = function() {
+    errorDiv.style.display = 'none';
+    formWrap.style.display = 'block';
+    submitBtn.disabled = false;
+  };
+})();
+</script>
 {% endblock %}
