@@ -13,7 +13,7 @@
   {% block body %}
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand"><span class="dot"></span> SIFDS Insurance</div>
+      <a href="/" class="sidebar-brand" title="Home"><i class="fa-solid fa-house"></i></a>
       <nav class="sidebar-nav">
         {% block sidebar %}{% endblock %}
       </nav>
@@ -52,7 +52,7 @@
     </div>
   </div>
   {% if request.user.profile.role == 'policyholder' %}
-  <button id="copilot-toggle" aria-label="Open chat assistant" style="position:fixed; bottom:20px; right:20px; width:54px; height:54px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(232,115,12,0.35); z-index:9999; font-size:20px; border:none; transition:transform 0.2s, box-shadow 0.2s;">
+  <button id="copilot-toggle" aria-label="Open chat assistant" style="position:fixed; bottom:20px; right:20px; width:54px; height:54px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 16px rgba(47,125,79,0.35); z-index:9999; font-size:20px; border:none; transition:transform 0.2s, box-shadow 0.2s;">
     <i class="fa-solid fa-comments"></i>
     <span id="copilot-badge" style="position:absolute; top:-2px; right:-2px; width:18px; height:18px; background:var(--danger); border-radius:50%; font-size:10px; display:none; align-items:center; justify-content:center; font-weight:700; border:2px solid #fff;">1</span>
   </button>
