@@ -30,10 +30,10 @@
       <div><p class="text-muted text-sm">Monthly premium</p><p style="font-weight:600; color:var(--primary); font-size:18px">R {{ policy.premium_amount|floatformat:2 }}</p></div>
     </div>
 
-    {% if stitch_configured %}
-    <!-- Real Stitch PayShap flow -->
+    {% if ozow_configured %}
+    <!-- Real Ozow payment flow -->
     <div class="alert alert-info">
-      <strong>PayShap via Stitch</strong> &mdash; you will be redirected to Stitch's secure payment page to approve the PayShap transfer with your bank. Real money will be transferred.
+      <strong>PayShap via Ozow</strong> &mdash; you will be redirected to Ozow's secure payment page to approve the PayShap transfer with your bank. Real money will be transferred.
     </div>
 
     <form id="payshap-form">
@@ -114,7 +114,7 @@
       <div style="width:64px; height:64px; border-radius:50%; background:var(--success-light); margin:0 auto 20px; display:flex; align-items:center; justify-content:center">
         <i class="fa-solid fa-circle-check" style="font-size:32px; color:var(--success)"></i>
       </div>
-      <h3 style="font-size:18px; font-weight:600">Redirecting to Stitch...</h3>
+      <h3 style="font-size:18px; font-weight:600">Redirecting to Ozow...</h3>
       <p class="text-muted text-sm" style="margin-top:8px">You are being redirected to complete your PayShap payment.</p>
     </div>
 
@@ -143,7 +143,7 @@
   const success = document.getElementById('payshap-success');
   const errorDiv = document.getElementById('payshap-error');
   const submitBtn = document.getElementById('payshap-submit');
-  const stitchConfigured = {{ stitch_configured|yesno:"true,false" }};
+  const ozowConfigured = {{ ozow_configured|yesno:"true,false" }};
 
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -159,7 +159,7 @@
     formData.append('payment_type', 'premium');
     formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
 
-    if (!stitchConfigured) {
+    if (!ozowConfigured) {
       const bank = document.getElementById('payshap-bank').value;
       const account = document.getElementById('payshap-account').value;
       const shapId = document.getElementById('payshap-shapid').value;

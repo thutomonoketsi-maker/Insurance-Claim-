@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -435,7 +435,7 @@ def customer_purchase_policy(request):
                     category='policy', action_url='/staff/applications/')
 
         messages.success(request, f'Policy {policy.policy_number} created. Amount due: R {premium_amount:.2f}. Please proceed to payment.')
-        return redirect('customer_payshap_payment', policy_id=policy.id)
+        return redirect('customer_ozow_payment', policy_id=policy.id)
 
     limits_json = json.dumps({
         k: [str(v[0]), str(v[1]), str(PREMIUM_RATES.get(k, Decimal('0.010')))]
@@ -501,17 +501,16 @@ def customer_cancel_policy(request, policy_id):
 
 
 @role_required('policyholder')
-def customer_payshap_payment(request, policy_id):
+def customer_ozow_payment(request, policy_id):
     policy = get_object_or_404(Policy, id=policy_id, user=request.user)
 
     if policy.status not in ('active', 'pending'):
         messages.error(request, 'This policy is not eligible for payment.')
         return redirect('customer_policy_detail', policy_id=policy.id)
 
-    stitch_configured = bool(
-        getattr(settings, 'STITCH_CLIENT_ID', '') and
-        getattr(settings, 'STITCH_CLIENT_SECRET', '') and
-        getattr(settings, 'STITCH_PAYSHAP_NODE', '')
+    ozow_configured = bool(
+        getattr(settings, 'OZOW_SITE_CODE', '') and
+        getattr(settings, 'OZOW_API_KEY', '')
     )
 
     if request.method == 'POST':
@@ -524,7 +523,7 @@ def customer_payshap_payment(request, policy_id):
             if is_ajax:
                 return JsonResponse({'error': err}, status=400)
             messages.error(request, err)
-            return redirect('customer_payshap_payment', policy_id=policy.id)
+            return redirect('customer_ozow_payment', policy_id=policy.id)
 
         try:
             amount = Decimal(amount)
@@ -533,17 +532,17 @@ def customer_payshap_payment(request, policy_id):
             if is_ajax:
                 return JsonResponse({'error': err}, status=400)
             messages.error(request, err)
-            return redirect('customer_payshap_payment', policy_id=policy.id)
+            return redirect('customer_ozow_payment', policy_id=policy.id)
 
         if amount <= 0:
             err = 'Amount must be greater than zero.'
             if is_ajax:
                 return JsonResponse({'error': err}, status=400)
             messages.error(request, err)
-            return redirect('customer_payshap_payment', policy_id=policy.id)
+            return redirect('customer_ozow_payment', policy_id=policy.id)
 
-        if stitch_configured:
-            # --- Real Stitch PayShap flow ---
+        if ozow_configured:
+            # --- Real Ozow payment flow ---
             now = timezone.now()
             seq = Payment.objects.count() + 1001
             payment_number = f"PAY-{now.year}-{seq}"
@@ -560,27 +559,34 @@ def customer_payshap_payment(request, policy_id):
                 payment_type=payment_type,
                 status='pending',
                 due_date=now.date(),
-                reference=f"Stitch-{external_ref}",
+                reference=f"Ozow-{external_ref}",
                 invoice_number=invoice_number,
                 coverage_month=coverage_month,
             )
 
+            scheme = 'https' if request.is_secure() else 'http'
+            host = request.get_host()
+            base = f"{scheme}://{host}"
+            success_url = f"{base}/dashboard/customer/payments/{payment.id}/ozow/return/?status=success"
+            cancel_url = f"{base}/dashboard/customer/payments/{payment.id}/ozow/return/?status=cancel"
+            error_url = f"{base}/dashboard/customer/payments/{payment.id}/ozow/return/?status=error"
+            notify_url = f"{base}/ozow/notify/"
+
             try:
-                from .stitch import create_payshap_payment, StitchError
-                result = create_payshap_payment(
+                from .ozow import create_payment, OzowError
+                result = create_payment(
                     amount=amount,
                     reference=external_ref,
-                    payer_reference=request.user.get_full_name() or request.user.username,
-                    beneficiary_reference='SIFDS Insurance',
-                    external_reference=external_ref,
+                    customer_email=request.user.email,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                    error_url=error_url,
+                    notify_url=notify_url,
                 )
-                payment.stitch_payment_id = result['payment_id']
+                payment.ozow_transaction_id = result['transaction_id']
                 payment.save()
 
-                redirect_url = result.get('redirect_url')
-                if not redirect_url:
-                    raise StitchError('Stitch did not return a redirect URL.')
-
+                redirect_url = result['url']
                 if is_ajax:
                     return JsonResponse({'success': True, 'redirect_url': redirect_url,
                                          'payment_id': payment.id})
@@ -589,12 +595,11 @@ def customer_payshap_payment(request, policy_id):
             except Exception as exc:
                 payment.status = 'failed'
                 payment.save()
-                logger.error('Stitch payment creation failed: %s', exc)
-                err = f'Stitch payment could not be started: {exc}'
+                logger.error('Ozow payment creation failed: %s', exc)
                 if is_ajax:
                     return JsonResponse({'error': str(exc)}, status=400)
-                messages.error(request, 'We could not start your PayShap payment. Please try again or contact support.')
-                return redirect('customer_payshap_payment', policy_id=policy.id)
+                messages.error(request, 'We could not start your Ozow payment. Please try again or contact support.')
+                return redirect('customer_ozow_payment', policy_id=policy.id)
 
         # --- Fallback: record payment directly (no live gateway) ---
         bank = request.POST.get('bank', '').strip()
@@ -602,11 +607,11 @@ def customer_payshap_payment(request, policy_id):
         shap_id = request.POST.get('shap_id', '').strip()
 
         if not all([bank, account_number, shap_id]):
-            err = 'All bank details are required to process the PayShap payment.'
+            err = 'All bank details are required to process the payment.'
             if is_ajax:
                 return JsonResponse({'error': err}, status=400)
             messages.error(request, err)
-            return redirect('customer_payshap_payment', policy_id=policy.id)
+            return redirect('customer_ozow_payment', policy_id=policy.id)
 
         now = timezone.now()
         seq = Payment.objects.count() + 1001
@@ -643,37 +648,22 @@ def customer_payshap_payment(request, policy_id):
         messages.success(request, f'PayShap payment of R {amount:.2f} completed. Invoice {invoice_number} generated.')
         return redirect('customer_invoice', payment_id=payment.id)
 
-    context = {'policy': policy, 'stitch_configured': stitch_configured}
+    context = {'policy': policy, 'ozow_configured': ozow_configured}
     return render(request, 'core/customer_payshap_payment.html', context)
 
 
 @role_required('policyholder')
-def stitch_payment_return(request, payment_id):
-    """Callback after the policyholder returns from Stitch's payment page."""
+def ozow_payment_return(request, payment_id):
+    """Customer is redirected back here after paying on Ozow's hosted page."""
     payment = get_object_or_404(Payment, id=payment_id, user=request.user)
 
     if payment.status == 'completed':
         messages.info(request, 'This payment has already been completed.')
         return redirect('customer_invoice', payment_id=payment.id)
 
-    stitch_configured = bool(
-        getattr(settings, 'STITCH_CLIENT_ID', '') and
-        getattr(settings, 'STITCH_CLIENT_SECRET', '') and
-        getattr(settings, 'STITCH_PAYSHAP_NODE', '')
-    )
+    status_param = (request.GET.get('status') or '').lower()
 
-    if stitch_configured and payment.stitch_payment_id:
-        try:
-            from .stitch import get_payment_status, StitchError
-            status_info = get_payment_status(payment.stitch_payment_id)
-            stitch_status = (status_info.get('status') or '').upper()
-        except Exception as exc:
-            logger.error('Stitch status query failed: %s', exc)
-            stitch_status = 'COMPLETED'
-    else:
-        stitch_status = 'COMPLETED'
-
-    if stitch_status in ('COMPLETED', 'COMPLETE', 'PAID', 'SUCCESS'):
+    if status_param == 'success':
         now = timezone.now()
         payment.status = 'completed'
         payment.paid_at = now
@@ -684,22 +674,75 @@ def stitch_payment_return(request, payment_id):
                category='payment', related_policy=payment.policy, related_payment=payment,
                action_url=f'/dashboard/customer/payments/invoice/{payment.id}/')
         notify_role('staff', 'Monthly Premium Paid',
-                    f'{request.user.get_full_name()} paid R {payment.amount:.2f} via PayShap (Stitch) for {payment.policy.policy_number} ({now.strftime("%B %Y")}).',
+                    f'{request.user.get_full_name()} paid R {payment.amount:.2f} via Ozow for {payment.policy.policy_number} ({now.strftime("%B %Y")}).',
                     category='payment')
-        log_activity(request.user, 'create', f'Paid R {payment.amount:.2f} via Stitch PayShap for policy {payment.policy.policy_number} ({payment.coverage_month})')
+        log_activity(request.user, 'create', f'Paid R {payment.amount:.2f} via Ozow for policy {payment.policy.policy_number} ({payment.coverage_month})')
 
         messages.success(request, f'PayShap payment of R {payment.amount:.2f} completed successfully! Your invoice {payment.invoice_number} is ready.')
         return redirect('customer_invoice', payment_id=payment.id)
 
-    # Payment not completed (user cancelled or it failed)
-    if stitch_status in ('FAILED', 'CANCELLED', 'CANCELED', 'EXPIRED', 'DECLINED'):
+    if status_param == 'cancel':
         payment.status = 'failed'
         payment.save()
-        messages.error(request, 'Your PayShap payment did not complete. Please try again.')
-    else:
-        messages.warning(request, 'Your payment is still being processed. Your invoice will appear once it completes.')
+        messages.error(request, 'Your payment was cancelled. Please try again when you are ready.')
+        return redirect('customer_payments')
 
+    # Error or unknown
+    payment.status = 'failed'
+    payment.save()
+    messages.error(request, 'Your payment did not complete. Please try again or contact support.')
     return redirect('customer_payments')
+
+
+@csrf_exempt
+@require_POST
+def ozow_webhook(request):
+    """Server-to-server notification from Ozow confirming payment status.
+
+    Ozow POSTs form-encoded data to NotifyUrl after the payment is processed.
+    This is the authoritative confirmation — it works even if the customer
+    closes their browser before the redirect.
+    """
+    try:
+        from .ozow import verify_notification, STATUS_SUCCESS, STATUS_FAILED, STATUS_CANCELLED
+    except ImportError:
+        return HttpResponse('error', status=500)
+
+    data = {}
+    for key in request.POST:
+        data[key] = request.POST[key]
+
+    if not verify_notification(data):
+        logger.warning('Ozow webhook: hash verification failed')
+        return HttpResponse('hash failed', status=400)
+
+    transaction_ref = data.get('TransactionReference') or data.get('transactionReference') or ''
+    ozow_status = (data.get('Status') or data.get('status') or '').upper()
+
+    payment = Payment.objects.filter(reference=f"Ozow-{transaction_ref}").first()
+    if not payment:
+        logger.warning('Ozow webhook: no payment found for ref %s', transaction_ref)
+        return HttpResponse('ok')
+
+    if payment.status == 'completed':
+        return HttpResponse('ok')
+
+    if ozow_status in STATUS_SUCCESS:
+        now = timezone.now()
+        payment.status = 'completed'
+        payment.paid_at = now
+        payment.save()
+
+        notify(payment.user, 'Payment Confirmed',
+               f'Your PayShap payment of R {payment.amount:.2f} for policy {payment.policy.policy_number} has been confirmed by Ozow.',
+               category='payment', related_policy=payment.policy, related_payment=payment,
+               action_url=f'/dashboard/customer/payments/invoice/{payment.id}/')
+        log_activity(payment.user, 'create', f'Payment confirmed via Ozow webhook for {payment.payment_number}')
+    elif ozow_status in STATUS_FAILED or ozow_status in STATUS_CANCELLED:
+        payment.status = 'failed'
+        payment.save()
+
+    return HttpResponse('ok')
 
 
 @role_required('policyholder')

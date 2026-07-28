@@ -37,7 +37,7 @@
   {% if month_paid %}
   <span class="badge completed" style="font-size:13px; padding:6px 14px"><i class="fa-solid fa-circle-check"></i> Payment for this month was made</span>
   {% else %}
-  <a href="{% url 'customer_payshap_payment' policy.id %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-bolt"></i> Pay with PayShap</a>
+  <a href="{% url 'customer_ozow_payment' policy.id %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-bolt"></i> Pay with PayShap</a>
   {% endif %}
   <a href="{% url 'customer_renew_policy' policy.id %}" class="btn btn-sm"><i class="fa-solid fa-rotate-right"></i> Renew policy</a>
   {% if policy.status == 'active' %}

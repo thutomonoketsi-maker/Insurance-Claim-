@@ -130,8 +130,7 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
-# Stitch PayShap payment gateway
-STITCH_CLIENT_ID = os.environ.get('STITCH_CLIENT_ID', '')
-STITCH_CLIENT_SECRET = os.environ.get('STITCH_CLIENT_SECRET', '')
-STITCH_PAYSHAP_NODE = os.environ.get('STITCH_PAYSHAP_NODE', '')
-STITCH_API_BASE = os.environ.get('STITCH_API_BASE', 'https://api.stitch.money')
+# Ozow PayShap payment gateway
+OZOW_SITE_CODE = os.environ.get('OZOW_SITE_CODE', '')
+OZOW_API_KEY = os.environ.get('OZOW_API_KEY', '')
+OZOW_IS_TEST = os.environ.get('OZOW_IS_TEST', 'false').lower() == 'true'

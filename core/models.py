@@ -189,7 +189,7 @@ class Payment(models.Model):
     reference = models.CharField(max_length=100, blank=True)
     invoice_number = models.CharField(max_length=50, blank=True)
     coverage_month = models.CharField(max_length=20, blank=True)
-    stitch_payment_id = models.CharField(max_length=100, blank=True)
+    ozow_transaction_id = models.CharField(max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
