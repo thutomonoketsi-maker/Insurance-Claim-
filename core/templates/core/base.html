@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}SIFDS Insurance{% endblock %}</title>
+  <title>{% block title %}AI-Powered Insurance{% endblock %}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% block extra_head %}{% endblock %}
@@ -60,7 +60,7 @@
     <div style="background:linear-gradient(135deg, var(--primary), var(--accent)); color:#fff; padding:14px 18px; font-weight:600; display:flex; align-items:center; gap:10px; flex-shrink:0;">
       <div style="width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:18px;"><i class="fa-solid fa-robot"></i></div>
       <div>
-        <div>SIFDS Copilot</div>
+        <div>AI Assistant</div>
         <div style="font-size:11px; font-weight:400; opacity:0.85;">Always here to help</div>
       </div>
       <span id="copilot-close" style="margin-left:auto; cursor:pointer; font-size:20px; opacity:0.8;">&times;</span>
@@ -133,7 +133,7 @@
       badge.style.display = 'none';
       if (!opened) {
         opened = true;
-        addMessage('bot', "Hi! I am your SIFDS insurance assistant. I can help with policies, claims, payments, and more. What can I help you with today?");
+        addMessage('bot', "Hi! I am your AI insurance assistant. I can help with policies, claims, payments, and more. What can I help you with today?");
         renderQuickReplies();
       }
       setTimeout(() => input.focus(), 300);

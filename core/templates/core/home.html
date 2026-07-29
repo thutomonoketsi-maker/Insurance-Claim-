@@ -4,13 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIFDS Insurance - Simple, reliable cover</title>
+  <title>AI-Powered Insurance - Simple, reliable cover</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
   <nav class="site-nav">
-    <a href="{% url 'home' %}" class="brand"><span class="dot"></span> SIFDS Insurance</a>
+    <a href="{% url 'home' %}" class="brand"><span class="dot"></span> Insurance</a>
     <div class="links">
       <a href="{% url 'features' %}">Features</a>
       <a href="{% url 'about' %}">About</a>
@@ -21,8 +21,9 @@
   </nav>
 
   <section class="hero">
-    <h1>Insurance that's simple to manage</h1>
-    <p>Apply for cover, submit claims, track payments, and stay informed — all in one place.</p>
+    <div class="ai-badge"><i class="fa-solid fa-robot"></i> AI-Powered Insurance</div>
+    <h1>Insurance that's smart, simple, and secure</h1>
+    <p>Apply for cover, submit claims, track payments, and stay protected with AI-powered fraud detection and a virtual assistant that's always here to help.</p>
     <div class="cta">
       <a href="{% url 'register' %}" class="btn btn-primary">Get started</a>
       <a href="{% url 'features' %}" class="btn">See features</a>
@@ -30,9 +31,24 @@
   </section>
 
   <section class="section">
-    <h2>Everything in one place</h2>
-    <p class="lead">A clear, straightforward way to handle your insurance.</p>
+    <h2>AI-powered protection, built in</h2>
+    <p class="lead">Every claim is screened by our intelligent fraud engine — automatically.</p>
     <div class="feature-grid">
+      <div class="feature feature-ai">
+        <div class="ico"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3>AI fraud detection</h3>
+        <p>Every claim is analysed in real time using multiple risk signals — amount patterns, claim frequency, policy age, and description analysis — to flag suspicious activity before it costs you.</p>
+      </div>
+      <div class="feature feature-ai">
+        <div class="ico"><i class="fa-solid fa-robot"></i></div>
+        <h3>Virtual assistant</h3>
+        <p>An intelligent assistant is available around the clock to help policyholders with questions about policies, claims, payments, and more — no waiting on hold.</p>
+      </div>
+      <div class="feature feature-ai">
+        <div class="ico"><i class="fa-solid fa-brain"></i></div>
+        <h3>Smart risk scoring</h3>
+        <p>Claims receive an automatic risk score from low to critical, with detailed reasons for each flag — so your team knows exactly where to focus.</p>
+      </div>
       <div class="feature">
         <div class="ico"><i class="fa-regular fa-file-lines"></i></div>
         <h3>Policy management</h3>
@@ -46,28 +62,23 @@
       <div class="feature">
         <div class="ico"><i class="fa-regular fa-credit-card"></i></div>
         <h3>Payments</h3>
-        <p>See your premiums and payouts, and keep track of what's due.</p>
+        <p>Pay your premiums via PayShap and keep track of what's due.</p>
       </div>
-      <div class="feature">
-        <div class="ico"><i class="fa-regular fa-bell"></i></div>
-        <h3>Notifications</h3>
-        <p>Stay informed about your claims, payments, and policy updates.</p>
-      </div>
-      <div class="feature">
-        <div class="ico"><i class="fa-regular fa-shield"></i></div>
-        <h3>Fraud checks</h3>
-        <p>Every claim is screened automatically so suspicious activity is flagged early.</p>
-      </div>
-      <div class="feature">
-        <div class="ico"><i class="fa-regular fa-folder"></i></div>
-        <h3>Documents</h3>
-        <p>Upload and store your supporting documents securely in one place.</p>
+    </div>
+  </section>
+
+  <section class="section fraud-alert-section">
+    <div class="fraud-alert-banner">
+      <div class="fraud-alert-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <div>
+        <h3>AI Fraud Alert System</h3>
+        <p>Our engine continuously monitors every claim for suspicious patterns. When something doesn't add up, it's flagged instantly — with a risk score and the reasons why — so nothing slips through.</p>
       </div>
     </div>
   </section>
 
   <footer class="site-footer">
-    &copy; {% now "Y" %} SIFDS Insurance. All rights reserved.
+    &copy; {% now "Y" %} AI-Powered Insurance. All rights reserved.
   </footer>
 </body>
 </html>

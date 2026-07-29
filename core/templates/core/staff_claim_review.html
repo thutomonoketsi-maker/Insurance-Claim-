@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Review Claim - SIFDS Insurance{% endblock %}
+{% block title %}Review Claim - AI-Powered Insurance{% endblock %}
 {% block page_title %}Review Claim{% endblock %}
 
 {% block sidebar %}
@@ -26,9 +26,32 @@
 <div class="stat-grid">
   <div class="stat"><div class="label">Amount claimed</div><div class="value">R {{ claim.amount_claimed|floatformat:2 }}</div></div>
   <div class="stat"><div class="label">Policy</div><div class="value text-sm" style="font-size:15px">{{ claim.policy.policy_number }}</div></div>
-  <div class="stat"><div class="label">Fraud score</div>
-    <div class="value">{% if claim.fraud_flagged %}<span style="color:var(--danger)">{{ claim.fraud_score }}</span>{% else %}{{ claim.fraud_score }}{% endif %}</div>
-    {% if claim.fraud_flagged %}<div class="sub" style="color:var(--danger)">Flagged for review</div>{% endif %}
+  <div class="stat"><div class="label">AI fraud score</div>
+    <div class="value">{% if claim.fraud_flagged %}<span style="color:var(--danger)">{{ claim.fraud_score }}/100</span>{% else %}{{ claim.fraud_score }}/100{% endif %}</div>
+    {% if claim.fraud_risk_level %}<div class="sub"><span class="badge risk-{{ claim.fraud_risk_level }}">{{ claim.fraud_risk_level|title }}</span></div>{% endif %}
+  </div>
+</div>
+
+<div class="fraud-analysis-card">
+  <div class="fraud-analysis-head">
+    <i class="fa-solid fa-robot"></i>
+    <h3>AI Fraud Analysis</h3>
+  </div>
+  <div class="fraud-analysis-body">
+    <p class="text-muted text-sm">Risk score: <strong>{{ claim.fraud_score }}/100</strong> &mdash; <span class="badge risk-{{ claim.fraud_risk_level }}">{{ claim.fraud_risk_level|title }}</span></p>
+    <div class="fraud-score-bar">
+      <div class="fraud-score-fill {{ claim.fraud_risk_level }}" style="width: {{ claim.fraud_score }}%;"></div>
+    </div>
+    {% if fraud_reasons %}
+    <p class="text-muted text-sm mb-8">Factors detected by the AI engine:</p>
+    <ul class="fraud-reason-list">
+      {% for reason in fraud_reasons %}
+      <li><i class="fa-solid fa-flag"></i> {{ reason }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted text-sm">No suspicious patterns detected. This claim appears low-risk.</p>
+    {% endif %}
   </div>
 </div>
 

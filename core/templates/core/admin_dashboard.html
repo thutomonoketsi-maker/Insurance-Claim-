@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Admin Dashboard - SIFDS Insurance{% endblock %}
+{% block title %}Admin Dashboard - AI-Powered Insurance{% endblock %}
 {% block page_title %}Admin Dashboard{% endblock %}
 
 {% block sidebar %}
@@ -24,6 +24,32 @@
   <div class="stat"><div class="label">Flagged claims</div><div class="value">{{ flagged_claims }}</div></div>
   <div class="stat"><div class="label">Total payments</div><div class="value">R {{ total_payments|floatformat:2 }}</div></div>
 </div>
+
+{% if fraud_alert_count > 0 %}
+<div class="fraud-alert-card">
+  <div class="fraud-header">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <h3>AI Fraud Alerts</h3>
+    <span class="count">{{ fraud_alert_count }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim</th><th>Policyholder</th><th>Amount</th><th>Risk</th><th>Score</th></tr></thead>
+      <tbody>
+        {% for claim in fraud_alerts %}
+        <tr>
+          <td><a href="{% url 'admin_claims' %}">{{ claim.claim_number }}</a></td>
+          <td>{{ claim.user.get_full_name|default:claim.user.username }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td><span class="badge risk-{{ claim.fraud_risk_level }}">{{ claim.fraud_risk_level|title }}</span></td>
+          <td><span class="risk-score" style="color:var(--danger)">{{ claim.fraud_score }}/100</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 <div class="row between mb-16">
   <h3 style="font-size:16px; font-weight:600">Recent activity</h3>

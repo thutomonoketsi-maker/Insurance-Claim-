@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Staff Dashboard - SIFDS Insurance{% endblock %}
+{% block title %}Staff Dashboard - AI-Powered Insurance{% endblock %}
 {% block page_title %}Staff Dashboard{% endblock %}
 
 {% block sidebar %}
@@ -22,8 +22,33 @@
   <div class="stat"><div class="label">Active policies</div><div class="value">{{ active_policies }}</div></div>
 </div>
 
+{% if fraud_alert_count > 0 %}
+<div class="fraud-alert-card">
+  <div class="fraud-header">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <h3>AI Fraud Alerts</h3>
+    <span class="count">{{ fraud_alert_count }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Claim</th><th>Policyholder</th><th>Amount</th><th>Risk</th><th>Score</th></tr></thead>
+      <tbody>
+        {% for claim in fraud_alerts %}
+        <tr>
+          <td><a href="{% url 'staff_claim_review' claim.id %}">{{ claim.claim_number }}</a></td>
+          <td>{{ claim.user.get_full_name|default:claim.user.username }}</td>
+          <td>R {{ claim.amount_claimed|floatformat:2 }}</td>
+          <td><span class="badge risk-{{ claim.fraud_risk_level }}">{{ claim.fraud_risk_level|title }}</span></td>
+          <td><span class="risk-score" style="color:var(--danger)">{{ claim.fraud_score }}/100</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="row between mb-16">
-  <h3 style="font-size:16px; font-weight:600">Recent claims</h3>
   <a href="{% url 'staff_claims' %}" class="btn btn-sm">View all</a>
 </div>
 <div class="card mb-24">

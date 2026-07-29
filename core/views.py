@@ -776,8 +776,20 @@ def customer_submit_claim(request):
 
         policy = get_object_or_404(Policy, id=policy_id, user=request.user)
 
+        from datetime import datetime as dt
+        try:
+            incident_date_obj = dt.strptime(incident_date, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            incident_date_obj = None
+
         claim_number = f"CLM-{datetime.now().year}-{Claim.objects.count() + 1001}"
-        score = calculate_fraud_score(amount_claimed, policy, request.user)
+
+        from .fraud_engine import analyze_claim
+        result = analyze_claim(
+            amount_claimed=amount_claimed, policy=policy, user=request.user,
+            incident_description=incident_description,
+            incident_date=incident_date_obj,
+        )
 
         claim = Claim.objects.create(
             claim_number=claim_number,
@@ -789,8 +801,10 @@ def customer_submit_claim(request):
             incident_location=incident_location,
             amount_claimed=Decimal(amount_claimed),
             status='submitted',
-            fraud_score=score,
-            fraud_flagged=score >= 60,
+            fraud_score=result['score'],
+            fraud_flagged=result['score'] >= 40,
+            fraud_risk_level=result['risk_level'],
+            fraud_reasons=result['reasons'],
         )
 
         files = request.FILES.getlist('documents')
@@ -820,7 +834,7 @@ def customer_submit_claim(request):
 
         if claim.fraud_flagged:
             notify_role('investigator', 'High-Risk Claim Flagged',
-                        f'Claim {claim_number} has a fraud score of {score}.',
+                        f'Claim {claim_number} has a fraud score of {result["score"]} ({claim.fraud_risk_level}).',
                         category='fraud', action_url=f'/investigator/cases/')
 
         messages.success(request, f'Claim {claim_number} submitted successfully.')
@@ -1015,6 +1029,8 @@ def staff_dashboard(request):
         'active_policies': active_policies,
         'recent_claims': Claim.objects.order_by('-submitted_at')[:5],
         'recent_policies': Policy.objects.order_by('-created_at')[:5],
+        'fraud_alerts': Claim.objects.filter(fraud_flagged=True, status__in=['submitted', 'under_review']).order_by('-fraud_score')[:5],
+        'fraud_alert_count': Claim.objects.filter(fraud_flagged=True, status__in=['submitted', 'under_review']).count(),
     }
     return render(request, 'core/staff_dashboard.html', context)
 
@@ -1156,7 +1172,7 @@ def staff_claim_review(request, claim_id):
         return redirect('staff_claims')
 
     investigators = User.objects.filter(profile__role='investigator', profile__status='active')
-    context = {'claim': claim, 'investigators': investigators}
+    context = {'claim': claim, 'investigators': investigators, 'fraud_reasons': claim.fraud_reasons if claim.fraud_reasons else []}
     return render(request, 'core/staff_claim_review.html', context)
 
 
@@ -1295,6 +1311,8 @@ def investigator_dashboard(request):
         'flagged_count': flagged.count(),
         'open_cases': assigned.exclude(status__in=['approved', 'rejected', 'paid']).count(),
         'recent_cases': assigned.order_by('-updated_at')[:5],
+        'high_risk_claims': Claim.objects.filter(fraud_risk_level__in=['high', 'critical'], status__in=['submitted', 'under_review', 'investigation']).order_by('-fraud_score')[:5],
+        'high_risk_count': Claim.objects.filter(fraud_risk_level__in=['high', 'critical'], status__in=['submitted', 'under_review', 'investigation']).count(),
     }
     return render(request, 'core/investigator_dashboard.html', context)
 
@@ -1386,6 +1404,8 @@ def admin_dashboard(request):
             Sum('amount')
         )['amount__sum'] or 0,
         'recent_activity': ActivityLog.objects.order_by('-created_at')[:10],
+        'fraud_alerts': Claim.objects.filter(fraud_flagged=True, status__in=['submitted', 'under_review', 'investigation']).order_by('-fraud_score')[:5],
+        'fraud_alert_count': Claim.objects.filter(fraud_flagged=True, status__in=['submitted', 'under_review', 'investigation']).count(),
     }
     return render(request, 'core/admin_dashboard.html', context)
 
@@ -1529,7 +1549,7 @@ def copilot_chat(request):
         return JsonResponse({'reply': 'Sorry, I could not understand that. Could you rephrase?'})
 
     if not question:
-        return JsonResponse({'reply': 'Hi! I am your SIFDS insurance assistant. Ask me about your policies, claims, payments, or coverage limits.'})
+        return JsonResponse({'reply': 'Hi! I am your AI insurance assistant. Ask me about your policies, claims, payments, or coverage limits.'})
 
     user = request.user
     policies = Policy.objects.filter(user=user)
@@ -1564,7 +1584,7 @@ def copilot_chat(request):
         return JsonResponse({'reply': 'Your monthly premium is auto-calculated based on your coverage amount and plan type. For example, R 100,000 vehicle cover = about R 125/month. You will see the exact amount before you confirm your policy.'})
 
     if any(w in question for w in ['hello', 'hi', 'hey', 'help']):
-        return JsonResponse({'reply': 'Hi! I am your SIFDS insurance assistant. I can help you with:\n- Your policies and coverage\n- Your claims and their status\n- Your payments and premiums\n- Coverage limits for each plan\n- How premiums are calculated\nWhat would you like to know?'})
+        return JsonResponse({'reply': 'Hi! I am your AI insurance assistant. I can help you with:\n- Your policies and coverage\n- Your claims and their status\n- Your payments and premiums\n- Coverage limits for each plan\n- How premiums are calculated\nWhat would you like to know?'})
 
     if any(w in question for w in ['document', 'upload', 'file']):
         return JsonResponse({'reply': 'You can upload supporting documents (ID, proof of address, police reports, photos) from the Documents page. Files must be JPG, PNG, or PDF, max 5MB each.'})

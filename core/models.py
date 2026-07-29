@@ -121,6 +121,8 @@ class Claim(models.Model):
 
     fraud_score = models.IntegerField(default=0)
     fraud_flagged = models.BooleanField(default=False)
+    fraud_risk_level = models.CharField(max_length=20, default='low')
+    fraud_reasons = models.JSONField(default=list, blank=True)
 
     investigator = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
